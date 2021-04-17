@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<link rel="stylesheet" href="https://demos.jquerymobile.com/1.4.2/css/themes/default/jquery.mobile-1.4.2.min.css">
+<link rel="stylesheet" href="/style.cd660723.css">
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>D3 Swarm Plot</title>
+    <script src="https://demos.jquerymobile.com/1.4.2/js/jquery.js"></script>
+    <script src="https://demos.jquerymobile.com/1.4.2/js/jquery.mobile-1.4.2.min.js"></script>
+    <script src="https://unpkg.com/d3-sankey@0"></script>
+<script src="/style.cd660723.js"></script></head>
+
+<body style="float: unset;">
+    <div id="NavOverlay" class="overlay">
+        <span id="NavCloseBtn" class="closebtn">&times;</span>
+        <div class="overlay-content">
+            <p style="font-size: x-large; font-weight: bold; color: #cccccc;">Visualisations de l'inventaire de la SAQ
+                </p><p id="linkSec1" class="section-link">Disponibilité et prix des produits</p>
+                <p id="linkSec2" class="section-link">Tendances géographiques</p>
+                <p id="linkSec3" class="section-link">Provenance des produits</p>
+                <p id="linkSec4" class="section-link">Catégories des produits</p>
+        </div>
+    </div>
+
+    <div id="container" class="scroll-container">
+        <section id="BubbleChartSection">
+            <div class="row" style="height: 120px;">
+                <div class="titleBar block">
+                    <table style="height: 100%;">
+                        <tr>
+                            <td class="burgerMenu">&#9776;</td>
+                            <td class="title">Disponibilité et prix des produits</td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="block">
+                    <div class="selector">
+                        <select id="bubble-region">
+                            <option value="all">Toutes les régions</option>
+                        </select>
+                        <select id="bubble-branch">
+                            <option value="all">Toutes les succursales</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="block" id="BubbleSlider">
+                    <form>
+                        <div data-role="rangeslider" data-mini="true">
+                            <input type="range" id="rangeStart" min="1" max="7009" value="1" step="10">
+                            <input type="range" id="rangeEnd" min="1" max="7009" value="3000" step="10">
+                        </div>
+                    </form>
+                </div>
+                <div class="block">
+                    <span>Critère de filtre</span>
+                    <select id="selectFilter">
+                        <option value="total">Nombre d'unités</option>
+                        <option value="tauxAlcool">Taux d'alcool</option>
+                        <option value="prix">Prix</option>
+                        <option value="disponibility">Disponibilité</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+        <section id="Section2">
+            <div class="titleBar block">
+                <table style="height: 100%;">
+                    <tr>
+                        <td class="burgerMenu">&#9776;</td>
+                        <td class="title">Tendances géographiques</td>
+                    </tr>
+                </table>
+            </div>
+            <div class="graph" id="map-viz">
+                <svg class="main-svg">
+                  <defs>
+                    <clipPath id="cut-off-bottom">
+                      <rect x="64" y="0" width="2000" height="860"></rect>
+                    </clipPath>
+                  </defs>
+                </svg>
+                <div class="flex-container">
+                  <div class="first">
+                    <input type="button" id="reset-map" value="Reset"><br>
+                    <input type="button" id="switch-map" value="Switch 1" class="1">
+                  </div>
+                  <div class="second">
+                    <div id="map-panel" style="visibility: hidden;"></div>
+                  </div>
+                  <div class="third">
+                    <div id="count"></div>
+                    <label class="container">Tout
+                        <input type="checkbox" checked="checked" value="tout">
+                      </label>
+  
+                    <label class="container">SAQ (276)
+                      <input type="checkbox" checked="checked" value="SAQ">
+                      <span class="checkmark"></span>
+                    </label>
+                    
+                    <label class="container">SAQ Sélection (92)
+                      <input type="checkbox" checked="checked" value="SAQ Sélection">
+                      <span class="checkmark"></span>
+                    </label>
+                    
+                    <label class="container">SAQ Express (26)
+                      <input type="checkbox" checked="checked" value="SAQ Express">
+                      <span class="checkmark"></span>
+                    </label>
+                    
+                    <label class="container">SAQ Dépôt (10)
+                      <input type="checkbox" checked="checked" value="SAQ Dépôt">
+                      <span class="checkmark"></span>
+                    </label>
+  
+                    <label class="container">SAQ Restauration (3)
+                      <input type="checkbox" checked="checked" value="SAQ Restauration">
+                      <span class="checkmark"></span>
+                    </label>
+                  </div>
+                </div>              
+              </div>
+        </section>
+        <section id="Section3">
+            <div class="titleBar block">
+                <table style="height: 100%;">
+                    <tr>
+                        <td class="burgerMenu">&#9776;</td>
+                        <td class="title">Catégories des produits</td>
+                    </tr>
+                </table>
+            </div>
+            <div class="block">
+                <div class="selector">
+
+                </div>
+            </div>
+            <div class="block">
+                <div class="selector">
+
+
+                </div>
+            </div>
+            <div class="sankey-viz-container">
+                <div class="graph-sankey" id="graph-sanky1">
+                    <select name="region1" id="region1" class="selector-sankey">
+                        <option value="all">Toutes les régions</option>
+                    </select>
+                    <select name="branch" id="branch1" class="selector-sankey">
+                        <option value="all">Toutes les succursales</option>
+                    </select>
+                    <svg class="main-svg" id="svg-sanky1"></svg>
+                </div>
+                <div class="graph-sankey">
+                    <select name="region" id="region2" class="selector-sankey">
+                        <option value="All">Toutes les régions</option>
+                    </select>
+                    <select name="branch" id="branch2" class="selector-sankey">
+                        <option value="All">Toutes les succursales</option>
+                    </select>
+                    <svg class="main-svg" id="svg-sanky2"></svg>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script src="https://d3js.org/d3.v5.js"></script>
+    <script src="/src.e31bb0bc.js"></script>
+</body>
+
+</html>
