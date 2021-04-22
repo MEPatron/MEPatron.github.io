@@ -1,0 +1,498 @@
+body {
+    font-family: 'Arial', 'sans-serif';
+    /* font-size: 16px; */
+    background-color: #ffffff !important;
+    color: #362023;
+    margin: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.graph {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.graph-sankey {
+    width: 100%;
+    height: 1200px;
+}
+
+.main-svg {
+    width: 100%;
+    height: 100%;
+}
+
+div#region1-button.ui-btn.ui-icon-carat-d.ui-btn-icon-right.ui-corner-all.ui-shadow {
+    margin: auto;
+    width: 300px
+}
+
+div#branch1-button.ui-btn.ui-icon-carat-d.ui-btn-icon-right.ui-corner-all.ui-shadow {
+    margin: auto;
+    width: 300px
+}
+
+div#region2-button.ui-btn.ui-icon-carat-d.ui-btn-icon-right.ui-corner-all.ui-shadow {
+    margin: auto;
+    width: 300px
+}
+
+div#branch2-button.ui-btn.ui-icon-carat-d.ui-btn-icon-right.ui-corner-all.ui-shadow {
+    margin: auto;
+    width: 300px
+}
+
+svg {
+    background-color: #ffffff;
+}
+
+.d3-tip {
+    line-height: 1;
+    font-weight: normal;
+    padding: 12px;
+    background: rgb(54, 32, 35);
+    color: #fff;
+    border-radius: 2px;
+    pointer-events: none;
+    width: 200px;
+    text-shadow: none;
+    z-index: 10;
+    /*override other css*/
+}
+
+
+/* Extrait de https://www.w3schools.com/css/tryit.asp?filename=trycss_tooltip_arrow_left */
+
+.tooltip {
+    position: relative;
+    display: inline-block;
+}
+
+.tooltip .tooltiptext {
+    visibility: hidden;
+    text-shadow: none;
+    width: 300px;
+    font-weight: normal;
+    padding: 12px;
+    background: rgb(54, 32, 35);
+    color: #fff;
+    border-radius: 2px;
+    position: absolute;
+    z-index: 10;
+    top: 150%;
+    left: 50%;
+    margin-left: -80px;
+}
+
+.tooltip .tooltiptext::after {
+    content: "";
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: transparent transparent black transparent;
+}
+
+.tooltip:hover .tooltiptext {
+    visibility: visible;
+}
+
+
+/* //////////////////// */
+
+h1 {
+    font-family: 'Times', 'serif';
+    font-size: 56px;
+    margin: 0;
+    font-weight: normal;
+}
+
+h2 {
+    font-weight: normal;
+}
+
+.axis-text {
+    transform-origin: center;
+    transform-box: fill-box;
+    text-anchor: middle;
+}
+
+.button {
+    cursor: pointer;
+}
+
+.button-text {
+    pointer-events: none;
+}
+
+.tooltip-value {
+    font-weight: normal;
+}
+
+.axis path,
+.axis line {
+    stroke: #362023;
+}
+
+.axis text {
+    fill: #362023;
+}
+
+.row {
+    width: 100%;
+    vertical-align: middle;
+    text-align: left;
+}
+
+.intro-page {
+    display: flex;
+}
+
+.intro-column {
+    flex: 50%;
+}
+
+.block {
+    height: 50px;
+    vertical-align: middle;
+    width: 20%;
+    display: inline-table;
+    padding: 0 20px 0 10px;
+}
+
+​ .productCircle {
+    cursor: pointer;
+}
+
+.titleBar {
+    margin: 15px 0 5px 5px;
+    display: inline-flex;
+    text-align: left;
+    vertical-align: top;
+    height: 75px;
+    width: 320px;
+    text-align: left;
+    border-radius: 25px;
+    border: 2px solid #7A003B;
+    /* padding: 20px; */
+    background: linear-gradient(to right, #7A003B 17.5%, #ffffff 17.5%);
+}
+
+.burgerMenu {
+    vertical-align: middle;
+    color: white;
+    font-size: 45px;
+    cursor: pointer
+}
+
+.title {
+    vertical-align: middle;
+    padding-left: 20px;
+    /* padding-top: 10px; */
+    text-align: left;
+    color: black;
+    font-weight: bold;
+    font-size: 15px;
+}
+
+
+/* Snap scroll */
+
+.scroll-container {
+    height: 100vh;
+    overflow-y: scroll;
+    scroll-snap-type: y proximity;
+}
+
+section {
+    scroll-snap-align: start;
+}
+
+section:nth-child(1) {
+    height: 100vh;
+    background-color: white;
+}
+
+section:nth-child(2) {
+    height: 100vh;
+}
+
+section:nth-child(3) {
+    height: 100vh;
+}
+
+
+/* section:nth-child(4) {} */
+
+.link {
+    fill: none;
+    stroke: #000;
+    stroke-opacity: .2;
+}
+
+.link:hover {
+    stroke-opacity: .5;
+}
+
+#sankey-panel {
+    margin-top: 30%;
+    margin-right: 10px;
+    height: fit-content;
+    border: solid;
+    border-width: 2px;
+    border-radius: 3%;
+    padding: 10px;
+}
+
+
+/* Overlay test */
+
+
+/* from https://www.w3schools.com/howto/tryit.asp?filename=tryhow_js_overlay */
+
+.overlay {
+    height: 100%;
+    width: 0;
+    position: fixed;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    background-color: rgba(122, 0, 59, 0.95);
+    overflow-x: hidden;
+    font-size: large;
+    text-shadow: none;
+    transition: 0.5s;
+    color: white;
+}
+
+.overlay-content {
+    position: relative;
+    top: 25%;
+    width: 100%;
+    text-align: center;
+    margin-top: 30px;
+}
+
+.overlay a {
+    padding: 8px;
+    text-decoration: none;
+    font-size: 36px;
+    color: #818181;
+    display: block;
+    transition: 0.3s;
+}
+
+.overlay a:hover,
+.overlay a:focus {
+    color: #f1f1f1;
+}
+
+.overlay .closebtn {
+    position: absolute;
+    top: 20px;
+    right: 45px;
+    font-size: 60px;
+}
+
+.sankey-viz-container {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    margin: auto;
+}
+
+.sankey-sides {
+    width: 25%
+}
+
+#graph-sanky1 {
+    margin-right: 150px;
+}
+
+
+/* Map viz */
+
+#map-viz .main-svg {
+    width: 100%;
+    height: 94%;
+    margin-top: -63px;
+}
+
+#panel .theme {
+    padding-top: 25px;
+}
+
+#panel {
+    cursor: default;
+}
+
+#map-viz {
+    height: 95%;
+}
+
+#map-viz circle.marker {
+    cursor: pointer;
+}
+
+#map-viz .flex-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    margin-left: 20px;
+    margin-right: 20px;
+}
+
+#map-viz .flex-container div {
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
+
+#map-viz .flex-container div.first {
+    height: 20%;
+    border: solid;
+}
+
+#map-viz .flex-container div.second {
+    height: 40%;
+}
+
+#map-viz .flex-container div.third {
+    height: 40%;
+    border: solid;
+    border-width: 2px;
+    border-radius: 3%;
+    padding: 10px;
+}
+
+#map-viz .flex-container div.second {
+    height: fit-content;
+    border: solid;
+    border-width: 2px;
+    border-radius: 3%;
+    padding: 10px;
+}
+
+#third-block {
+    float: right;
+}
+
+#reset-map {
+    justify-content: center;
+    width: 200px;
+    margin-top: 30px;
+    float: right;
+}
+
+#switch-map {
+    margin-top: 30px;
+}
+
+#map-viz button {
+    margin-top: 30px;
+}
+
+
+/* checkbox */
+
+#map-viz .container {
+    display: block;
+    position: relative;
+    padding-left: 35px;
+    cursor: pointer;
+}
+
+
+/* Hide the default style of the checkbox */
+
+#map-viz input[type=checkbox] {
+    visibility: hidden;
+}
+
+#map-viz div.ui-checkbox:not(:nth-child(2)) .ui-btn.ui-checkbox-off {
+    background-image: none;
+    /* border-radius: 50%;*/
+    color: lightgray;
+}
+
+#map-viz div.ui-checkbox:not(:nth-child(2)) .ui-btn.ui-checkbox-off:after {
+    background-image: none;
+    border-radius: 50%;
+}
+
+#map-viz div.ui-checkbox:not(:nth-child(2)) .ui-btn.ui-checkbox-on:after {
+    background-image: none;
+    border-radius: 50%;
+}
+
+#map-viz div.ui-checkbox:nth-child(3) .container.ui-btn.ui-checkbox-on:after {
+    background-color: red;
+}
+
+#map-viz div.ui-checkbox:nth-child(4) .container.ui-btn.ui-checkbox-on:after {
+    background-color: blue;
+}
+
+#map-viz div.ui-checkbox:nth-child(5) .container.ui-btn.ui-checkbox-on:after {
+    background-color: orange;
+}
+
+#map-viz div.ui-checkbox:nth-child(6) .container.ui-btn.ui-checkbox-on:after {
+    background-color: purple;
+}
+
+#map-viz div.ui-checkbox:nth-child(7) .container.ui-btn.ui-checkbox-on:after {
+    background-color: yellow;
+}
+
+
+/* Create a custom checkbox */
+
+
+/*
+#map-viz .checkmark {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 25px;
+    width: 25px;
+    border-radius: 50%;
+    border: solid;
+    border-width: 1px;
+    background-color: #cecece;
+}
+
+#map-viz .container input:checked~.checkmark {
+    background-color: #ffcc00;
+}
+
+#map-viz .container:nth-child(4) input:checked~.checkmark {
+    background-color: red;
+}
+
+#map-viz .container:nth-child(6) input:checked~.checkmark {
+    background-color: blue;
+}
+
+#map-viz .container:nth-child(8) input:checked~.checkmark {
+    background-color: orange;
+}
+
+#map-viz .container:nth-child(10) input:checked~.checkmark {
+    background-color: purple;
+}
+
+#map-viz .container:nth-child(12) input:checked~.checkmark {
+    background-color: yellow;
+}
+
+*/
+
+/*# sourceMappingURL=/style.cd660723.css.map */
