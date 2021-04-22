@@ -1,6 +1,6 @@
 body {
     font-family: 'Arial', 'sans-serif';
-    font-size: 16px;
+    /* font-size: 16px; */
     background-color: #ffffff !important;
     color: #362023;
     margin: 0;
@@ -28,22 +28,23 @@ body {
     height: 100%;
 }
 
-
 div#region1-button.ui-btn.ui-icon-carat-d.ui-btn-icon-right.ui-corner-all.ui-shadow {
-    margin:auto;
+    margin: auto;
     width: 300px
 }
+
 div#branch1-button.ui-btn.ui-icon-carat-d.ui-btn-icon-right.ui-corner-all.ui-shadow {
-    margin:auto;
+    margin: auto;
     width: 300px
 }
 
 div#region2-button.ui-btn.ui-icon-carat-d.ui-btn-icon-right.ui-corner-all.ui-shadow {
-    margin:auto;
+    margin: auto;
     width: 300px
 }
+
 div#branch2-button.ui-btn.ui-icon-carat-d.ui-btn-icon-right.ui-corner-all.ui-shadow {
-    margin:auto;
+    margin: auto;
     width: 300px
 }
 
@@ -60,9 +61,52 @@ svg {
     border-radius: 2px;
     pointer-events: none;
     width: 200px;
-    text-shadow: 0 0px 0 #f3f3f3;
+    text-shadow: none;
+    z-index: 10;
     /*override other css*/
 }
+
+
+/* Extrait de https://www.w3schools.com/css/tryit.asp?filename=trycss_tooltip_arrow_left */
+
+.tooltip {
+    position: relative;
+    display: inline-block;
+}
+
+.tooltip .tooltiptext {
+    visibility: hidden;
+    text-shadow: none;
+    width: 300px;
+    font-weight: normal;
+    padding: 12px;
+    background: rgb(54, 32, 35);
+    color: #fff;
+    border-radius: 2px;
+    position: absolute;
+    z-index: 10;
+    top: 150%;
+    left: 50%;
+    margin-left: -80px;
+}
+
+.tooltip .tooltiptext::after {
+    content: "";
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: transparent transparent black transparent;
+}
+
+.tooltip:hover .tooltiptext {
+    visibility: visible;
+}
+
+
+/* //////////////////// */
 
 h1 {
     font-family: 'Times', 'serif';
@@ -102,30 +146,18 @@ h2 {
     fill: #362023;
 }
 
-
-/* 
-form {
-    margin: 0px 0 0 0% !important;
-}
-
-.ui-slider .ui-btn-inner {
-    padding: 4px 0 0 0 !important;
-}
-
-.ui-slider-popup {
-    width: 100px;
-    height: 64px;
-    text-align: center;
-    font-size: 36px;
-    padding-top: 14px;
-    z-index: 100;
-    opacity: 0.8; 
-}*/
-
 .row {
     width: 100%;
     vertical-align: middle;
     text-align: left;
+}
+
+.intro-page {
+    display: flex;
+}
+
+.intro-column {
+    flex: 50%;
 }
 
 .block {
@@ -177,25 +209,28 @@ form {
 .scroll-container {
     height: 100vh;
     overflow-y: scroll;
-    scroll-snap-type: y mandatory;
+    scroll-snap-type: y proximity;
 }
 
 section {
-    /*scroll-snap-align: center;*/
+    scroll-snap-align: start;
 }
 
 section:nth-child(1) {
     height: 100vh;
+    background-color: white;
 }
 
 section:nth-child(2) {
     height: 100vh;
-    background-color: red;
 }
 
 section:nth-child(3) {
-    
+    height: 100vh;
 }
+
+
+/* section:nth-child(4) {} */
 
 .link {
     fill: none;
@@ -205,6 +240,16 @@ section:nth-child(3) {
 
 .link:hover {
     stroke-opacity: .5;
+}
+
+#sankey-panel {
+    margin-top: 30%;
+    margin-right: 10px;
+    height: fit-content;
+    border: solid;
+    border-width: 2px;
+    border-radius: 3%;
+    padding: 10px;
 }
 
 
@@ -260,15 +305,26 @@ section:nth-child(3) {
 .sankey-viz-container {
     display: flex;
     flex-direction: row;
-    width: 70%;
+    width: 100%;
     margin: auto;
+}
+
+.sankey-sides {
+    width: 25%
 }
 
 #graph-sanky1 {
     margin-right: 150px;
 }
 
+
 /* Map viz */
+
+#map-viz .main-svg {
+    width: 100%;
+    height: 94%;
+    margin-top: -63px;
+}
 
 #panel .theme {
     padding-top: 25px;
@@ -305,19 +361,42 @@ section:nth-child(3) {
 }
 
 #map-viz .flex-container div.second {
-    height: 20%;
+    height: 40%;
 }
 
 #map-viz .flex-container div.third {
-    height: 45%;
+    height: 40%;
     border: solid;
     border-width: 2px;
     border-radius: 3%;
-    padding: 5px;
+    padding: 10px;
+}
+
+#map-viz .flex-container div.second {
+    height: fit-content;
+    border: solid;
+    border-width: 2px;
+    border-radius: 3%;
+    padding: 10px;
+}
+
+#third-block {
+    float: right;
 }
 
 #reset-map {
     justify-content: center;
+    width: 200px;
+    margin-top: 30px;
+    float: right;
+}
+
+#switch-map {
+    margin-top: 30px;
+}
+
+#map-viz button {
+    margin-top: 30px;
 }
 
 
@@ -339,8 +418,13 @@ section:nth-child(3) {
 
 #map-viz div.ui-checkbox:not(:nth-child(2)) .ui-btn.ui-checkbox-off {
     background-image: none;
-    border-radius: 50%;
+    /* border-radius: 50%;*/
     color: lightgray;
+}
+
+#map-viz div.ui-checkbox:not(:nth-child(2)) .ui-btn.ui-checkbox-off:after {
+    background-image: none;
+    border-radius: 50%;
 }
 
 #map-viz div.ui-checkbox:not(:nth-child(2)) .ui-btn.ui-checkbox-on:after {

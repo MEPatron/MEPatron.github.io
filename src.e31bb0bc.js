@@ -177,8 +177,8 @@ function appendAxes(g) {
 
 
 function appendGraphLabels(g) {
-  g.append('text').text('Disponibilité (%)').attr('class', 'y axis-text').attr('transform', 'rotate(-90)').attr('font-size', 12);
-  g.append('text').text('Prix (CAD)').attr('class', 'x axis-text').attr('font-size', 12);
+  g.append('text').text('Disponibilité au Québec (%)').attr('class', 'y axis-text').attr('transform', 'rotate(-90)').attr('font-size', 15).style("text-shadow", "none");
+  g.append('text').text('Prix (CAD)').attr('class', 'x axis-text').attr('font-size', 15).style("text-shadow", "none");
 }
 /**
  * Draws the X axis at the bottom of the diagram.
@@ -283,7 +283,7 @@ exports.adjustCategories = adjustCategories;
 exports.getProduits = getProduits;
 exports.getNProduits = getNProduits;
 exports.getTopProduits = getTopProduits;
-exports.getFilteredProductWithCategories = getFilteredProductWithCategories;
+exports.getFilteredProductWithPercentile = getFilteredProductWithPercentile;
 exports.getSuccursales = getSuccursales;
 exports.getTypes = getTypes;
 exports.getColorScale1 = getColorScale1;
@@ -330,7 +330,7 @@ var SUCC_REMOVE = new Set([23043, 23454, 23452]); //  vin en vrac (!= SAQ) ou fe
 
 var CLOUD = 0; // id signifiant magasin en ligne
 
-var MIN_UNIT = 50;
+var MIN_UNIT_TO_KEEP = 1;
 var FULL_PRODUCTS;
 var currentProducts;
 var succursales;
@@ -355,7 +355,7 @@ function preprocess(data) {
   removeUselessBranches();
   removeMisc();
   calculateTotalPerProduct(FULL_PRODUCTS);
-  FULL_PRODUCTS = removeBelowMin(FULL_PRODUCTS, MIN_UNIT);
+  FULL_PRODUCTS = removeBelowMin(FULL_PRODUCTS, MIN_UNIT_TO_KEEP);
   calculateDisponibilityPerProduct(FULL_PRODUCTS);
   calculateTotalPerProduct(FULL_PRODUCTS, undefined, "subTotal");
   calculateDisponibilityPerProduct(FULL_PRODUCTS, undefined, "SuccDispoCount");
@@ -409,25 +409,38 @@ function getNProduits() {
 
 var pastRange;
 
-function getTopProduits(range) {
-  if (!range) {
-    range = pastRange;
+function getTopProduits(percentileRange) {
+  var range;
+
+  if (!percentileRange) {
+    if (pastRange) {
+      range = pastRange;
+    } else {
+      range = [0, 100000];
+    }
   } else {
-    pastRange = range;
+    range = convertPercentileRange(percentileRange);
   }
 
+  pastRange = range;
   return Object.values(currentProducts).sort(function (a, b) {
     return b[compareCriteria] - a[compareCriteria];
-  }).slice(Math.max(range[0] - 1, 0), Math.min(range[1] - 1, Object.values(currentProducts).length));
+  }).slice(Math.max(range[0] - 1, 0), Math.min(range[1], Object.values(currentProducts).length));
 }
 
-function getFilteredProductWithCategories(set, range) {
+function convertPercentileRange(percentileRange) {
+  var N = Object.keys(FULL_PRODUCTS).length;
+  var range = [Math.round(N - percentileRange[1] / 100.0 * N), Math.round(N - (percentileRange[0] - 1) / 100.0 * N)]; // console.log(percentileRange[0] + "-" + percentileRange[1] + "\t" + range[0] + "-" + range[1])
+
+  return range;
+}
+
+function getFilteredProductWithPercentile(set, percentileRange) {
   if (!set) {
     set = removedCategories;
-  } // console.log(getTopProduits(topN).filter((prod) => !set.has(prod.Cat1)))
+  }
 
-
-  return getTopProduits(range).filter(function (prod) {
+  return getTopProduits(percentileRange).filter(function (prod) {
     return !set.has(prod.Cat1);
   });
 }
@@ -639,7 +652,7 @@ function removeBelowMin(products, min_value) {
   for (var _i4 = 0, _Object$keys3 = Object.keys(products); _i4 < _Object$keys3.length; _i4++) {
     var k = _Object$keys3[_i4];
 
-    if (products[k].total > min_value) {
+    if (products[k].total >= min_value) {
       newProduits[k] = products[k];
     }
   }
@@ -822,40 +835,41 @@ function init() {
     d3.select(this).on("click", openFct);
   });
   d3.select("#NavCloseBtn").on("click", closeFct);
-  d3.select("#linkSec1").on("click", function () {
+  d3.select("#linkIntro").on("click", function () {
+    navigateToSection("#IntroSection");
+  });
+  d3.select("#linkSecBubble").on("click", function () {
     navigateToSection("#BubbleChartSection");
   });
-  d3.select("#linkSec2").on("click", function () {
-    navigateToSection("#Section2");
+  d3.select("#linkSecMap").on("click", function () {
+    navigateToSection("#SectionMap");
   });
-  d3.select("#linkSec3").on("click", function () {
-    navigateToSection("#Section3");
-  });
-  d3.select("#linkSec4").on("click", function () {
-    navigateToSection("#Section4");
+  d3.select("#linkSecSankey").on("click", function () {
+    navigateToSection("#SectionSankey");
   });
   d3.select("#NavOverlay").selectAll(".section-link").style("cursor", "pointer").on("mouseover", function () {
     d3.select(this).style("text-decoration", "underline");
-    console.log("hover in");
   }).on("mouseout", function () {
     d3.select(this).style("text-decoration", "none");
-    console.log("hover ouy");
   });
 }
 
 function navigateToSection(id) {
-  var pos = d3.select(id).node().getBoundingClientRect();
+  // console.log(id)
+  // console.log(d3.select(id))
+  // const pos = d3.select(id).node().getBoundingClientRect();
   var sections = d3.select('#container').node();
-  sections.scrollTo(0, pos.top);
+  sections.scrollTo(0, d3.select(id).node().offsetTop);
   closeFct();
 }
-},{}],"scripts/bubblechart/productTooltip.js":[function(require,module,exports) {
+},{}],"scripts/bubblechart/tooltips.js":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.getProductCard = getProductCard;
+exports.getInfo = getInfo;
 
 var preprocess = _interopRequireWildcard(require("./preprocess.js"));
 
@@ -866,9 +880,9 @@ function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj;
 function getProductCard(d) {
   // TODO : Generate tooltip contents
   return "<img src=".concat(preprocess.getCountryImageURL(d.pays), " style=\"float:left; display: block; width: 10%;\">") + "<span style=\"float:right; font-size:11px; padding-top: 5px;\">".concat(getCategorieString(d), "</span><br>") + "<p style=\"text-align: center\"><b>".concat(d.nom, "</b></p>") + "<p style=\"font-size:10px\">".concat(d.tauxAlcool, "%") + "<span style=\"float:right; font-size:10px\">".concat(d.volume, "ml</span></p>") // + `Origine : <span style="float:right;">${d.pays}</span>`
-  + "<img src=".concat(d.urlImage, " style=\"max-width: 75%; min-height: 100px; max-height: 200px; display: block; margin: auto;\">") + "<div style=\"width=100%; font-size:12px; text-align: justify; text-justify: inter-word;\">Prix en succursale : ".concat(d.prix.toFixed(2), "$") + // `Nb d'unités : <span style="float:right;">${d.total + " "}</span><br>` +
-  // `Disponibilité : <span style="float:right;">${(100 * d.disponibility).toFixed(2)}%</span><br><br>` +
-  "<br>".concat(getDescription(d), "</div>"); // `Sub Nb d'unités : <span style="float:right;">${d.subTotal}</span><br>` +
+  + "<img src=".concat(d.urlImage, " style=\"max-width: 75%; min-height: 100px; max-height: 200px; display: block; margin: auto;\">") + "<div style=\"width=100%; font-size:12px; text-align: justify; text-justify: inter-word;\">Prix en succursale : " + "<span style=\"float:right; font-weight: bold;\">".concat(d.prix.toFixed(2), "$</span><br>") + // `Nb d'unités : <span style="float:right;">${d.total + " "}</span><br>` +
+  // `Disponibilité : <span style="float:right;">${(100 * d.disponibility).toFixed(2)}%</span>` +
+  "".concat(getDescription(d), "</div>"); // `Sub Nb d'unités : <span style="float:right;">${d.subTotal}</span><br>` +
   // `Sub-disponibilité : <span style="float:right;">${d.SuccDispoCount}</span><br><br>`
 }
 
@@ -885,7 +899,7 @@ function getCategorieString(d) {
 }
 
 function getDescription(d) {
-  return getUnitDesc(d) + " " + getRegionDesc(d);
+  return getUnitDesc(d) + " " + getRegionDesc();
 }
 
 function getUnitDesc(d) {
@@ -898,7 +912,7 @@ function getUnitDesc(d) {
   return d.subTotal + " unité" + plural + " disponible" + plural;
 }
 
-function getRegionDesc(d) {
+function getRegionDesc() {
   var regionName = d3.select("#bubble-region").property('value');
   var succID = d3.select("#bubble-branch").property('value');
   var succName = d3.select('#bubble-branch option:checked').text();
@@ -910,6 +924,10 @@ function getRegionDesc(d) {
   } else {
     return "à " + succName;
   }
+}
+
+function getInfo(d) {
+  return "<p style=\"font-size:14px\">".concat(d, "</p>");
 }
 },{"./preprocess.js":"scripts/bubblechart/preprocess.js"}],"../node_modules/d3-svg-legend/node_modules/d3-selection/src/namespaces.js":[function(require,module,exports) {
 "use strict";
@@ -10522,12 +10540,13 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
  * @param {*} g The d3 Selection of the graph's g SVG element
  * @param {number} width The width of the graph, used to place the legend
  */
-function drawLegend(colorScale, updateFunc, g, width, height) {
+function drawLegend(colorScale, updateFunc, g, width, margin) {
   // TODO : Draw the legend using d3Legend
   // For help, see : https://d3-legend.susielu.com/
-  g.append("g").attr("class", "legendOrdinal").attr("transform", "translate(" + (width - 150) + "," + 0 + ")");
+  var legend = g.append("g").attr("class", "legendOrdinal").attr("transform", "translate(" + (width - 150) + "," + margin.top + ")");
+  legend.append("rect").attr("id", "legend-background").style("fill", "white").style("stroke", "black").style("stroke-width", "3px");
 
-  var legendOrdinal = _d3SvgLegend.default.legendColor().shape("path", d3.symbol().type(d3.symbolCircle).size(150)()).shapePadding(0).scale(colorScale).title("Catégories");
+  var legendOrdinal = _d3SvgLegend.default.legendColor().shape("path", d3.symbol().type(d3.symbolCircle).size(150)()).shapePadding(0).scale(colorScale).title("Catégories 💡");
 
   g.select(".legendOrdinal").call(legendOrdinal);
   g.select(".legendOrdinal");
@@ -10537,12 +10556,18 @@ function drawLegend(colorScale, updateFunc, g, width, height) {
   g.selectAll(".legendOrdinal .legendCells .cell").on("click", function (d) {
     var toRemove = pre.adjustCategories(d);
     d3.select(this).style("opacity", toRemove.has(d) ? 0.3 : 1);
-    updateFunc(pre.getFilteredProductWithCategories(toRemove));
+    updateFunc(pre.getFilteredProductWithPercentile(toRemove));
   }).on("mouseover", function (d) {
     d3.select(this).style("font-weight", "bold");
   }).on("mouseout", function (d) {
     d3.select(this).style("font-weight", "normal");
+  }).style("cursor", "pointer");
+  var bbox;
+  margin = 30;
+  g.selectAll(".legendOrdinal").each(function () {
+    bbox = this.getBBox();
   });
+  g.select("#legend-background").attr("width", bbox.width + margin).attr("height", bbox.height + margin).attr("x", bbox.x - margin / 3).attr("y", bbox.y - margin / 2);
 }
 },{"d3-svg-legend":"../node_modules/d3-svg-legend/indexRollupNext.js","./preprocess.js":"scripts/bubblechart/preprocess.js"}],"scripts/bubblechart/viz.js":[function(require,module,exports) {
 "use strict";
@@ -10559,8 +10584,6 @@ function _getRequireWildcardCache() { if (typeof WeakMap !== "function") return 
 function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } if (obj === null || typeof obj !== "object" && typeof obj !== "function") { return { default: obj }; } var cache = _getRequireWildcardCache(); if (cache && cache.has(obj)) { return cache.get(obj); } var newObj = {}; var hasPropertyDescriptor = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) { var desc = hasPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : null; if (desc && (desc.get || desc.set)) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } newObj.default = obj; if (cache) { cache.set(obj, newObj); } return newObj; }
 
 function addBubbleUI(buildFct, updateFct) {
-  // console.log(preprocess.getRegions())
-  // console.log(preprocess.getRegionsBranches(preprocess.getRegions()[0]))
   d3.select("#bubble-region").selectAll('option').data(preprocess.getRegions()).enter().append('option').text(function (d) {
     return d;
   }).attr('value', function (d) {
@@ -10585,21 +10608,17 @@ function addBubbleUI(buildFct, updateFct) {
   d3.select("#bubble-branch").on('change', updateFct);
 
   var callback = function callback() {
-    buildFct(preprocess.getFilteredProductWithCategories(undefined, [+d3.select("#rangeStart").property("value"), +d3.select("#rangeEnd").property("value")]));
+    buildFct(preprocess.getFilteredProductWithPercentile(undefined, [+d3.select("#rangeStart").property("value"), +d3.select("#rangeEnd").property("value")]));
   };
 
-  d3.select("#rangeStart").on("change", callback).attr("min", 1).attr("max", preprocess.getNProduits()).attr("value", 1);
-  d3.select("#rangeEnd").on("change", callback).attr("min", 1).attr("max", preprocess.getNProduits()).attr("value", 3000);
-  d3.select("#BubbleSlider").on("mouseup", callback); // d3.select("#selectFilter-button")
-  //     .text("Nombre d'unités")
-
+  d3.select("#rangeStart").on("change", callback);
+  d3.select("#rangeEnd").on("change", callback);
+  d3.select("#BubbleSlider").on("mouseup", callback);
   d3.select("#selectFilter").selectAll('option').data(preprocess.getFilters()).enter().append('option').text(function (d) {
     return d.nom;
   }).attr("value", function (d) {
     return d.attr;
-  }); // .property("selected", function(d, i) { return i == 0; })
-  // console.log("added filters")
-  // When the button is changed, run the updateChart function
+  }); // When the button is changed, run the build function
 
   d3.select("#selectFilter").on("change", function (d) {
     var selectedAttr = d3.select(this).property("value");
@@ -13716,72 +13735,342 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 function _getRequireWildcardCache() { if (typeof WeakMap !== "function") return null; var cache = new WeakMap(); _getRequireWildcardCache = function () { return cache; }; return cache; }
 
 function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } if (obj === null || typeof obj !== "object" && typeof obj !== "function") { return { default: obj }; } var cache = _getRequireWildcardCache(); if (cache && cache.has(obj)) { return cache.get(obj); } var newObj = {}; var hasPropertyDescriptor = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) { var desc = hasPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : null; if (desc && (desc.get || desc.set)) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } newObj.default = obj; if (cache) { cache.set(obj, newObj); } return newObj; }
-},{"./bisect":"../node_modules/d3-array/src/bisect.js","./ascending":"../node_modules/d3-array/src/ascending.js","./bisector":"../node_modules/d3-array/src/bisector.js","./cross":"../node_modules/d3-array/src/cross.js","./descending":"../node_modules/d3-array/src/descending.js","./deviation":"../node_modules/d3-array/src/deviation.js","./extent":"../node_modules/d3-array/src/extent.js","./histogram":"../node_modules/d3-array/src/histogram.js","./threshold/freedmanDiaconis":"../node_modules/d3-array/src/threshold/freedmanDiaconis.js","./threshold/scott":"../node_modules/d3-array/src/threshold/scott.js","./threshold/sturges":"../node_modules/d3-array/src/threshold/sturges.js","./max":"../node_modules/d3-array/src/max.js","./mean":"../node_modules/d3-array/src/mean.js","./median":"../node_modules/d3-array/src/median.js","./merge":"../node_modules/d3-array/src/merge.js","./min":"../node_modules/d3-array/src/min.js","./pairs":"../node_modules/d3-array/src/pairs.js","./permute":"../node_modules/d3-array/src/permute.js","./quantile":"../node_modules/d3-array/src/quantile.js","./range":"../node_modules/d3-array/src/range.js","./scan":"../node_modules/d3-array/src/scan.js","./shuffle":"../node_modules/d3-array/src/shuffle.js","./sum":"../node_modules/d3-array/src/sum.js","./ticks":"../node_modules/d3-array/src/ticks.js","./transpose":"../node_modules/d3-array/src/transpose.js","./variance":"../node_modules/d3-array/src/variance.js","./zip":"../node_modules/d3-array/src/zip.js"}],"scripts/sankey/helper.js":[function(require,module,exports) {
+},{"./bisect":"../node_modules/d3-array/src/bisect.js","./ascending":"../node_modules/d3-array/src/ascending.js","./bisector":"../node_modules/d3-array/src/bisector.js","./cross":"../node_modules/d3-array/src/cross.js","./descending":"../node_modules/d3-array/src/descending.js","./deviation":"../node_modules/d3-array/src/deviation.js","./extent":"../node_modules/d3-array/src/extent.js","./histogram":"../node_modules/d3-array/src/histogram.js","./threshold/freedmanDiaconis":"../node_modules/d3-array/src/threshold/freedmanDiaconis.js","./threshold/scott":"../node_modules/d3-array/src/threshold/scott.js","./threshold/sturges":"../node_modules/d3-array/src/threshold/sturges.js","./max":"../node_modules/d3-array/src/max.js","./mean":"../node_modules/d3-array/src/mean.js","./median":"../node_modules/d3-array/src/median.js","./merge":"../node_modules/d3-array/src/merge.js","./min":"../node_modules/d3-array/src/min.js","./pairs":"../node_modules/d3-array/src/pairs.js","./permute":"../node_modules/d3-array/src/permute.js","./quantile":"../node_modules/d3-array/src/quantile.js","./range":"../node_modules/d3-array/src/range.js","./scan":"../node_modules/d3-array/src/scan.js","./shuffle":"../node_modules/d3-array/src/shuffle.js","./sum":"../node_modules/d3-array/src/sum.js","./ticks":"../node_modules/d3-array/src/ticks.js","./transpose":"../node_modules/d3-array/src/transpose.js","./variance":"../node_modules/d3-array/src/variance.js","./zip":"../node_modules/d3-array/src/zip.js"}],"scripts/bubblechart/bubble-chart.js":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.addSelectionOption = addSelectionOption;
-exports.addChangeListener = addChangeListener;
-exports.generateMapG = generateMapG;
-exports.generateLegendG = generateLegendG;
+exports.addChart = addChart;
 
-/**
- * Add the options to the selector.
- *
- * @param {string} selector The id of the selector to which to add the options
- * @param {set} options The options to add to the selector
+var tooltip = _interopRequireWildcard(require("./tooltips.js"));
 
- */
-function addSelectionOption(selector, options) {
-  d3.select(selector).selectAll('.addedValue').remove();
-  d3.select(selector).selectAll('option').data(Array.from(options).sort()).enter().append('option').text(function (d) {
-    return d;
-  }).attr('value', function (d) {
-    return d;
-  }).attr('class', 'addedValue');
+var legend = _interopRequireWildcard(require("./legend.js"));
+
+var helper = _interopRequireWildcard(require("./helper.js"));
+
+var preprocess = _interopRequireWildcard(require("./preprocess.js"));
+
+var viz = _interopRequireWildcard(require("./viz.js"));
+
+var _d3Tip = _interopRequireDefault(require("d3-tip"));
+
+var _d3Array = require("d3-array");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _getRequireWildcardCache() { if (typeof WeakMap !== "function") return null; var cache = new WeakMap(); _getRequireWildcardCache = function () { return cache; }; return cache; }
+
+function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } if (obj === null || typeof obj !== "object" && typeof obj !== "function") { return { default: obj }; } var cache = _getRequireWildcardCache(); if (cache && cache.has(obj)) { return cache.get(obj); } var newObj = {}; var hasPropertyDescriptor = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) { var desc = hasPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : null; if (desc && (desc.get || desc.set)) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } newObj.default = obj; if (cache) { cache.set(obj, newObj); } return newObj; }
+
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
+function _toConsumableArray(arr) { return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _unsupportedIterableToArray(arr) || _nonIterableSpread(); }
+
+function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
+
+function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen); }
+
+function _iterableToArray(iter) { if (typeof Symbol !== "undefined" && Symbol.iterator in Object(iter)) return Array.from(iter); }
+
+function _arrayWithoutHoles(arr) { if (Array.isArray(arr)) return _arrayLikeToArray(arr); }
+
+function _arrayLikeToArray(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
+
+var USE_SIM = false;
+var colorScale;
+var sizeScale;
+var simulation;
+var init_decay;
+var stop_sim;
+var xAxis;
+var yAxis;
+var ORIGINAL_XSCALE;
+var ORIGINAL_YSCALE;
+var currentXScale;
+var currentYScale;
+var productTip;
+var width;
+var height;
+
+function addChart() {
+  var full_width = window.innerWidth - 35;
+  var full_height = window.innerHeight; // console.log(full_height)
+
+  var margin = {
+    top: 50,
+    right: 50,
+    bottom: 50,
+    left: 70
+  };
+  width = full_width - margin.left - margin.right;
+  height = full_height - margin.top - margin.bottom - 120; // console.log("Size " + [width, height])
+
+  var svg = d3.select("#BubbleChartSection").append("svg").attr("id", "svgBubble").attr("width", width + margin.left + margin.right).attr("height", height + margin.top + margin.bottom);
+  svg.append("g").attr("transform", "translate(" + margin.left + "," + 0 + ")").attr("width", width).attr("height", height + margin.bottom * 2).attr("id", "bubbleArea"); // clip path
+
+  d3.select("#svgBubble").append("clipPath").attr("id", "products-clip").append("rect") // .attr("x", margin.left)
+  // .attr("y", margin.top)
+  .attr("width", width).attr("height", height);
+  d3.select("#bubbleArea").attr("clip-path", "url(#products-clip)"); // tooltip
+
+  productTip = (0, _d3Tip.default)().attr('class', 'd3-tip').html(function (d) {
+    return tooltip.getProductCard(d);
+  });
+  productTip.direction(function (d) {
+    var upper = d.disponibility > 0.5;
+    var left = currentXScale(d.prix) < 0.5 * full_width;
+    return (upper ? 's' : 'n') + (left ? 'e' : 'w'); // easy way to safely show content without cropping
+  });
+  svg.call(productTip);
+  var data = Object.values(preprocess.getProduits());
+  ORIGINAL_YSCALE = d3.scaleLinear().domain([0, 1]).range([height, 0]).nice();
+  ORIGINAL_XSCALE = d3.scaleLog() // .domain([d3.min(data, function (d) { return d.prix; }), 1000])
+  // .domain([5, 150])
+  // .domain([1, 2000])
+  .domain([1.90, d3.max(data, function (d) {
+    return d.prix;
+  }) + 100]) // .domain(d3.extent(data, (d) => d.prix)) //d3.extent(data, (d) => d.prix))
+  .range([0, width]); // .nice()
+  // xScale.clamp(true)
+
+  colorScale = preprocess.getColorScale1();
+  addZoom(margin);
+  legend.drawLegend(colorScale, build, d3.select("#svgBubble"), width, margin); // labels
+
+  helper.appendGraphLabels(svg);
+  svg.select('.x.axis-text').attr('transform', 'translate(' + width / 2 + ', ' + (height + 70) + ')');
+  svg.select('.y.axis-text').attr('transform', 'translate(' + 15 + ', ' + height / 2 + ') rotate(-90)');
+  var maxRange = width * height / 100000; // console.log("Max dot radius " + maxRange)
+
+  sizeScale = d3.scaleLog().domain([1, d3.max(data.map(function (d) {
+    return d.total;
+  }))]).range([1, maxRange]); // sizeScale.clamp(true)
+
+  addInfoTooltip(svg);
+  viz.addBubbleUI(build, updateChart);
+  build(preprocess.getTopProduits([50, 100]));
+
+  function build(productsToShow) {
+    if (simulation) {
+      simulation.stop();
+    }
+
+    if (!productsToShow) {
+      productsToShow = getBubbleChartContent();
+    }
+
+    d3.select("#bubbleArea").selectAll(".productCircle").data(productsToShow).join("circle").attr("class", "productCircle").attr("stroke", "black").attr("stroke-width", "0.4").attr("fill", function (d) {
+      return colorScale(d.Cat1);
+    }).attr("r", function (d) {
+      return sizeScale(d.total);
+    }).attr("cx", function (d) {
+      return currentXScale(d.prix);
+    }).attr("cy", function (d) {
+      return currentYScale(d.disponibility);
+    }).on('mouseover', function (d) {
+      d3.select(this).attr("stroke-width", "2.5");
+      productTip.show(d, this);
+    }).on('mouseout', function () {
+      d3.select(this).attr("stroke-width", "0.4");
+      productTip.hide();
+    }).on('click', function (d) {
+      window.open('https://www.saq.com/fr/' + d.id, '_blank' // in a new tab
+      );
+    }).style("cursor", "pointer");
+
+    if (USE_SIM) {
+      simulation = d3.forceSimulation(productsToShow).force("x", d3.forceX(function (d) {
+        return currentXScale(d.prix);
+      }).strength(0.2)).force("y", d3.forceY(function (d) {
+        return currentYScale(d.disponibility);
+      }).strength(0.4)).force("collide", d3.forceCollide(function (d) {
+        return 0.5 * sizeScale(d.total);
+      })).alphaDecay(0).alpha(0.4).on("tick", tick);
+
+      function tick() {
+        d3.selectAll(".productCircle").attr("cx", function (d) {
+          return d.x;
+        }).attr("cy", function (d) {
+          return d.y;
+        });
+      }
+
+      resimulate();
+    }
+
+    updateOpacity();
+    updateChart();
+  }
 }
-/**
-* Add the options to the selector.
-*
-* @param {string} selector The id of the selector to which to add the options
-* @param {set} options The options to add to the selector
- */
 
+function resimulate() {
+  console.log("simulate");
 
-function addChangeListener(selector, func, sankeyParameters, color) {
-  d3.select(selector).on('change', function () {
-    var succRegionName = d3.select(this).property('value');
-    func(sankeyParameters, succRegionName, color);
+  if (init_decay) {
+    clearTimeout(init_decay);
+  }
+
+  if (stop_sim) {
+    clearTimeout(stop_sim);
+  }
+
+  init_decay = setTimeout(function () {
+    simulation.alphaDecay(0.1);
+  }, 8000);
+  stop_sim = setTimeout(function () {
+    simulation.stop();
+  }, 12000);
+}
+
+function getBubbleChartContent() {
+  var regionName = d3.select("#bubble-region").property('value');
+  var succName = d3.select("#bubble-branch").property('value');
+  var filter = d3.select("#selectFilter").property('value');
+  var lowerRange = d3.select("#rangeStart").property('value');
+  var upperRange = d3.select("#rangeEnd").property('value');
+  return preprocess.getFilteredProducts(regionName, succName, filter, lowerRange, upperRange);
+}
+
+function updateOpacity() {
+  d3.selectAll(".productCircle").attr("opacity", function (d) {
+    return d.subTotal > 0 ? 1 : 0.1;
   });
 }
-/**
-* Generates the SVG element g which will contain the sanky base.
-*
-* @param {number} width The width of the graph
-* @param {number} height The height of the graph
-* @returns {*} The d3 Selection for the created g element
-*/
 
-
-function generateMapG(vizNumber) {
-  d3.select('#svg-sanky' + vizNumber).append("rect").attr("width", "100%").attr("height", "100%").attr("fill", "#f9f9f9");
-  return d3.select('#svg-sanky' + vizNumber).append('g').attr('id', 'g-sanky' + vizNumber);
+function updateChart() {
+  var newData = getBubbleChartContent();
+  var dictionary = Object.assign.apply(Object, [{}].concat(_toConsumableArray(newData.map(function (x) {
+    return _defineProperty({}, x.id, x);
+  }))));
+  d3.select("#bubbleArea").selectAll(".productCircle").each(function (d) {
+    // if (dictionary[d.id]) {
+    d.subTotal = dictionary[d.id].subTotal;
+    d.SuccDispoCount = dictionary[d.id].SuccDispoCount; // } else {
+    //     console.log(d)
+    //     d.subTotal = 0
+    //     d.SuccDispoCount = 0
+    // }
+  });
+  updateOpacity();
 }
-/**
-* Generates the SVG element g which will contain the sanky base.
-*
-* @param {number} width The width of the graph
-* @param {number} height The height of the graph
-* @returns {*} The d3 Selection for the created g element
-*/
+
+function addZoom(margin) {
+  // taken from  https://observablehq.com/@d3/x-y-zoom
+  // set up the SVG
+  var svg = d3.select("#svgBubble");
+  helper.appendAxes(svg);
+  var gx = svg.select('.x.axis');
+  var gy = svg.select('.y.axis'); // z holds a copy of the previous transform, so we can track its changes
+
+  var z = d3.zoomIdentity; //     // helper.drawXAxis(xScale, height)
+  // xAxis = d3.select('.x.axis').attr('transform', 'translate( 0, ' + (height + 30) + ')')
+  //     .call(d3.axisBottom(xScale).tickSizeOuter(5).tickFormat(d3.format(",.2f"))) //.tickArguments([8, '~s']))
+  // yAxis = d3.select('.y.axis')
+  //     .call(d3.axisLeft(yScale).tickSizeOuter(0).tickArguments([5, '.0r']).tickFormat(d3.format(",.3p")))
+  //     // helper.drawYAxis(yScale)
+
+  xAxis = function xAxis(g, scale) {
+    return g.attr("transform", "translate(".concat(margin.left, ",").concat(height + 30, ")")) // .call(d3.axisBottom(scale).tickSizeOuter(5).tickFormat(x => `${x.toFixed(1)}`)) //.ticks(12))
+    .call(d3.axisBottom(scale).tickSizeOuter(5).tickFormat(function (x) {
+      return "".concat(x >= 2 ? x.toFixed(0) : x.toFixed(2));
+    }));
+  }; // .call(d3.axisBottom(scale).ticks(12))
+  // .call(g => g.select(".domain").attr("display", "none"))
 
 
-function generateLegendG() {
-  return d3.select('#svg-legend-sanky').append('g').attr('id', 'legend-sanky');
+  yAxis = function yAxis(g, scale) {
+    return g.attr("transform", "translate(".concat(ORIGINAL_XSCALE.range()[0] + margin.left, ",5)")) // .call(d3.axisLeft(scale).tickFormat(d3.format(",.3p")))
+    .call(d3.axisLeft(scale).tickFormat(function (x) {
+      if (x == 1) {
+        return "Partout";
+      } else if (x == 0) {
+        return "Nulle part";
+      } else if (x > 1 || x < 0) {
+        return "";
+      } else {
+        return "".concat((100 * x).toFixed(0), "%");
+      }
+    }));
+  }; // .call(d3.axisLeft(scale).tickFormat(5, d3.format(",.3p"))) //.ticks(12 * (height / width)))
+  // .call(d3.axisLeft(scale).ticks(12 * (height / width)))
+  // .call(g => g.select(".domain").attr("display", "none"))
+  // set up the ancillary zooms and an accessor for their transforms
+
+
+  var zoomX = d3.zoom().scaleExtent([0.8, 10]).translateExtent([[ORIGINAL_XSCALE(1), 0], [ORIGINAL_XSCALE(ORIGINAL_XSCALE.domain()[1] + 100), 0]]);
+  var zoomY = d3.zoom().scaleExtent([0.8, 5]).translateExtent([[0, ORIGINAL_YSCALE(1) - 100], [0, ORIGINAL_YSCALE(0) + 200]]);
+
+  var tx = function tx() {
+    return d3.zoomTransform(gx.node());
+  };
+
+  var ty = function ty() {
+    return d3.zoomTransform(gy.node());
+  };
+
+  gx.call(zoomX).attr("pointer-events", "none");
+  gy.call(zoomY).attr("pointer-events", "none"); // active zooming
+
+  var zoom = d3.zoom().on("zoom", function () {
+    var t = d3.event.transform;
+    var k = t.k / z.k;
+    var point = d3.mouse(this); // is it on an axis? is the shift key pressed?
+
+    var doX = point[0] > ORIGINAL_XSCALE.range()[0];
+    var doY = point[1] < ORIGINAL_YSCALE.range()[0];
+    var shift = d3.event.sourceEvent && d3.event.sourceEvent.shiftKey;
+
+    if (k === 1) {
+      // pure translation?
+      doX && gx.call(zoomX.translateBy, (t.x - z.x) / tx().k, 0);
+      doY && gy.call(zoomY.translateBy, 0, (t.y - z.y) / ty().k);
+    } else {
+      // if not, we're zooming on a fixed point
+      doX && gx.call(zoomX.scaleBy, shift ? 1 / k : k, point);
+      doY && gy.call(zoomY.scaleBy, k, point);
+    }
+
+    z = t;
+    redraw();
+  });
+  svg.call(zoom).call(zoom.transform, d3.zoomIdentity.scale(0.8));
+
+  function redraw() {
+    currentXScale = tx().rescaleX(ORIGINAL_XSCALE);
+    currentYScale = ty().rescaleY(ORIGINAL_YSCALE);
+    gx.call(xAxis, currentXScale);
+    gy.call(yAxis, currentYScale);
+    d3.select("#bubbleArea").selectAll(".productCircle").attr("cx", function (d) {
+      return currentXScale(d.prix);
+    }).attr("cy", function (d) {
+      return currentYScale(d.disponibility);
+    });
+  }
 }
-},{}],"scripts/sankey/preprocess.js":[function(require,module,exports) {
+
+function addInfoTooltip(svg) {
+  var infoTip = (0, _d3Tip.default)().attr('class', 'd3-tip').html(function (d) {
+    return tooltip.getInfo(d);
+  }); // infoTip.direction(function(d) {
+  //     return 's'
+  // })
+
+  svg.call(infoTip);
+  svg.select(".legendTitle").on('mouseover', function () {
+    infoTip.show("Les catégories peuvent être (dé)sélectionnées pour filtrer l'affichage", this);
+  }).on('mouseout', function () {
+    infoTip.hide();
+  }); // d3.select("#percentile-text")
+  //     .on('mouseover', function() {
+  //         infoTip.show("Les percentiles sont calculés en fonction du nombre de bouteilles en inventaire au Québec. " +
+  //             "Par exemple, pour afficher les 5% des produits ayant le plus de stock, l'intervalle 95-100 doit être sélectionné", this)
+  //     })
+  //     .on('mouseout', function() {
+  //         infoTip.hide()
+  //     })
+}
+},{"./tooltips.js":"scripts/bubblechart/tooltips.js","./legend.js":"scripts/bubblechart/legend.js","./helper.js":"scripts/bubblechart/helper.js","./preprocess.js":"scripts/bubblechart/preprocess.js","./viz.js":"scripts/bubblechart/viz.js","d3-tip":"../node_modules/d3-tip/index.js","d3-array":"../node_modules/d3-array/src/index.js"}],"scripts/sankey/preprocess.js":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -13855,7 +14144,6 @@ function getSecondCategoryWithChild(data, firstCategories) {
   data.forEach(function (d) {
     !firstCategories.has(d.source) ? categoriesSet.add(d.source) : null;
   });
-  console.log(categoriesSet);
   return categoriesSet;
 }
 /**
@@ -13961,271 +14249,73 @@ function prepareDataForGraph(data) {
   });
   return graph;
 }
-},{}],"scripts/bubblechart/bubble-chart.js":[function(require,module,exports) {
+},{}],"scripts/sankey/helper.js":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.addChart = addChart;
+exports.addSelectionOption = addSelectionOption;
+exports.addChangeListener = addChangeListener;
+exports.generateMapG = generateMapG;
+exports.generateLegendG = generateLegendG;
 
-var tooltip = _interopRequireWildcard(require("./productTooltip.js"));
+/**
+ * Add the options to the selector.
+ *
+ * @param {string} selector The id of the selector to which to add the options
+ * @param {set} options The options to add to the selector
 
-var legend = _interopRequireWildcard(require("./legend.js"));
-
-var helper = _interopRequireWildcard(require("./helper.js"));
-
-var preprocess = _interopRequireWildcard(require("./preprocess.js"));
-
-var viz = _interopRequireWildcard(require("./viz.js"));
-
-var _d3Tip = _interopRequireDefault(require("d3-tip"));
-
-var _d3Array = require("d3-array");
-
-var _helper2 = require("../sankey/helper.js");
-
-var _preprocess2 = require("../sankey/preprocess.js");
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function _getRequireWildcardCache() { if (typeof WeakMap !== "function") return null; var cache = new WeakMap(); _getRequireWildcardCache = function () { return cache; }; return cache; }
-
-function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } if (obj === null || typeof obj !== "object" && typeof obj !== "function") { return { default: obj }; } var cache = _getRequireWildcardCache(); if (cache && cache.has(obj)) { return cache.get(obj); } var newObj = {}; var hasPropertyDescriptor = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) { var desc = hasPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : null; if (desc && (desc.get || desc.set)) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } newObj.default = obj; if (cache) { cache.set(obj, newObj); } return newObj; }
-
-function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
-
-function _toConsumableArray(arr) { return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _unsupportedIterableToArray(arr) || _nonIterableSpread(); }
-
-function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
-
-function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen); }
-
-function _iterableToArray(iter) { if (typeof Symbol !== "undefined" && Symbol.iterator in Object(iter)) return Array.from(iter); }
-
-function _arrayWithoutHoles(arr) { if (Array.isArray(arr)) return _arrayLikeToArray(arr); }
-
-function _arrayLikeToArray(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
-
-var USE_SIM = true;
-var colorScale;
-var sizeScale;
-var simulation;
-var init_decay;
-var stop_sim;
-var xAxis;
-var yAxis;
-var xScale;
-var yScale;
-var tip;
-
-function addChart() {
-  var full_width = window.innerWidth - 35;
-  var full_height = window.innerHeight - 110;
-  var margin = {
-    top: 50,
-    right: 50,
-    bottom: 100,
-    left: 50
-  };
-  var width = full_width - margin.left - margin.right;
-  var height = full_height - margin.top - margin.bottom; // console.log("Size " + [width, height])
-
-  var svg = d3.select("#BubbleChartSection").append("svg").attr("id", "svgBubble") // .attr("viewBox", [0, 0, width, height])
-  .attr("width", width + margin.left + margin.right).attr("height", height + margin.top + margin.bottom) // .call(d3.zoom().on("zoom", function () {
-  //   svg.attr("transform", d3.event.transform)
-  //   resimulate()
-  // }))
-  .append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-  tip = (0, _d3Tip.default)().attr('class', 'd3-tip').html(function (d) {
-    return tooltip.getProductCard(d);
-  });
-  tip.direction(function (d) {
-    var upper = d.disponibility > 0.5;
-    var left = xScale(d.prix) < 0.5 * xScale.range()[1];
-    return (upper ? 's' : 'n') + (left ? 'e' : 'w');
-  });
-  svg.call(tip);
-  var data = Object.values(preprocess.getProduits());
-  yScale = d3.scaleLinear().domain([0, 1]).range([height, 0]).nice(); // console.log(extent(data, (d) => d.prix))
-
-  xScale = d3.scaleLog() // .domain([d3.min(data, function (d) { return d.prix; }), 1000])
-  .domain([5, 150]) //d3.extent(data, (d) => d.prix))
-  .range([0, width]); // .nice()
-
-  xScale.clamp(true);
-  colorScale = preprocess.getColorScale1();
-  legend.drawLegend(colorScale, build, svg, width, height);
-  helper.appendAxes(svg); // helper.drawXAxis(xScale, height)
-
-  xAxis = d3.select('.x.axis').attr('transform', 'translate( 0, ' + (height + 30) + ')').call(d3.axisBottom(xScale).tickSizeOuter(5).tickFormat(d3.format(",.2f"))); //.tickArguments([8, '~s']))
-
-  yAxis = d3.select('.y.axis').call(d3.axisLeft(yScale).tickSizeOuter(0).tickArguments([5, '.0r']).tickFormat(d3.format(",.3p"))); // helper.drawYAxis(yScale)
-  // Axis
-
-  helper.appendGraphLabels(svg);
-  svg.selectAll('.x.axis-text').attr('transform', 'translate(' + width / 2 + ', ' + (height + 60) + ')');
-  svg.selectAll('.y.axis-text').attr('transform', 'translate(' + -margin.left / 2 + ', ' + height / 2 + ') rotate(-90)'); // Add a clipPath: everything out of this area won't be drawn.
-
-  var clip = svg.append("defs").append("SVG:clipPath").attr("id", "clipBubble").append("SVG:rect").attr("width", width).attr("height", height - 300).attr("x", 0).attr("y", 0);
-  svg.append('g').attr("clip-path", "url(#clip)").attr("id", "bubbleChart");
-  var maxRange = width * height / 100000; // console.log("Max dot radius " + maxRange)
-
-  sizeScale = d3.scaleLog().domain([1, d3.max(data.map(function (d) {
-    return d.total;
-  }))]).range([1, maxRange]);
-  sizeScale.clamp(true); // let zoom = d3.zoom()
-  //   .scaleExtent([1, 40])
-  //   .translateExtent([[0, 0], [width, height]])
-  //   .on("zoom", zoomed);
-  // svg.call(zoom);
-  // var view = svg.append("rect")
-  //   .attr("class", "view")
-  //   .attr("x", 0.5)
-  //   .attr("y", 0.5)
-  //   .attr("opacity", 0)
-  //   .attr("width", width - 1)
-  //   .attr("height", height - 1);
-  // function zoomed() {
-  //   // view.attr("transform", d3.event.transform);
-  //   var newX = d3.event.transform.rescaleX(xScale);
-  //   var newY = d3.event.transform.rescaleY(yScale);
-  //   // update axes with these new boundaries
-  //   xAxis.call(d3.axisBottom(newX).tickFormat(d3.format(",.2f")))
-  //   yAxis.call(d3.axisLeft(newY).tickFormat(d3.format(",.3p")))
-  //   d3.select("#bubbleChart")
-  //     .selectAll(".productCircle")
-  //     .attr("cx", (d) => newX(d.prix))
-  //     .attr("cy", (d) => newY(d.disponibility))
-  //   // resimulate()
-  // }
-  // function resetted() {
-  //   svg.transition()
-  //     .duration(750)
-  //     .call(zoom.transform, d3.zoomIdentity);
-  // }
-
-  viz.addBubbleUI(build, updateChart);
-  build(preprocess.getTopProduits([1, 3000])); // function addSuccSelect() {
-  //     const tempSucc = ["Toutes"].concat(preprocess.getSuccursales().sort(helper.compareNom))
-  //     d3.select("#selectSucc")
-  //         .selectAll()
-  //         .data(tempSucc)
-  //         .enter()
-  //         .append('option')
-  //         .text(function(d) { return d.nom ? d.nom : tempSucc[0]; }) // text showed in the menu
-  //         .attr("value", function(d) { return d.id ? d.id : 0; }) // corresponding value returned by the button
-  //     d3.select("#selectSucc-button")
-  //         .selectAll("span")
-  //         .text("Filtrer par succursale")
-  //     // When the button is changed, run the updateChart function
-  //     d3.select("#selectSucc").on("change", function(d) {
-  //         updateOpacity()
-  //     })
-  // }
-
-  function build(productsToShow) {
-    if (simulation) {
-      simulation.stop();
-    }
-
-    if (!productsToShow) {
-      productsToShow = getBubbleChartContent();
-      console.log("done w/ content process");
-    }
-
-    d3.select("#bubbleChart").selectAll(".productCircle").data(productsToShow).join("circle").attr("class", "productCircle").attr("stroke", "black").attr("stroke-width", "0.4").attr("fill", function (d) {
-      return colorScale(d.Cat1);
-    }).attr("r", function (d) {
-      return sizeScale(d.total);
-    }).attr("cx", function (d) {
-      return xScale(d.prix);
-    }).attr("cy", function (d) {
-      return yScale(d.disponibility);
-    }).on('mouseover', function (d) {
-      d3.select(this).attr("stroke-width", "2.5");
-      tip.show(d, this);
-    }).on('mouseout', function () {
-      d3.select(this).attr("stroke-width", "0.4");
-      tip.hide();
-    }).on('click', function (d) {
-      window.open('https://www.saq.com/fr/' + d.id, '_blank' // in a new tab
-      );
-    });
-
-    if (USE_SIM) {
-      simulation = d3.forceSimulation(productsToShow).force("x", d3.forceX(function (d) {
-        return xScale(d.prix);
-      }).strength(0.2)).force("y", d3.forceY(function (d) {
-        return yScale(d.disponibility);
-      }).strength(0.4)).force("collide", d3.forceCollide(function (d) {
-        return 0.5 * sizeScale(d.total);
-      })).alphaDecay(0).alpha(0.4).on("tick", tick);
-
-      function tick() {
-        d3.selectAll(".productCircle").attr("cx", function (d) {
-          return d.x;
-        }).attr("cy", function (d) {
-          return d.y;
-        });
-      }
-
-      resimulate();
-    }
-
-    updateOpacity();
-    updateChart();
-  }
+ */
+function addSelectionOption(selector, options) {
+  d3.select(selector).selectAll('.addedValue').remove();
+  d3.select(selector).selectAll('option').data(Array.from(options).sort()).enter().append('option').text(function (d) {
+    return d;
+  }).attr('value', function (d) {
+    return d;
+  }).attr('class', 'addedValue');
+  d3.select(selector).node().value = 'all';
 }
+/**
+* Add the options to the selector.
+*
+* @param {string} selector The id of the selector to which to add the options
+* @param {set} options The options to add to the selector
+ */
 
-function resimulate() {
-  console.log("simulate");
 
-  if (init_decay) {
-    clearTimeout(init_decay);
-  }
-
-  if (stop_sim) {
-    clearTimeout(stop_sim);
-  }
-
-  init_decay = setTimeout(function () {
-    // console.log("start alpha decay");
-    simulation.alphaDecay(0.1);
-  }, 8000);
-  stop_sim = setTimeout(function () {
-    // console.log("stop sim");
-    simulation.stop();
-  }, 12000);
-}
-
-function getBubbleChartContent() {
-  var regionName = d3.select("#bubble-region").property('value');
-  var succName = d3.select("#bubble-branch").property('value');
-  var filter = d3.select("#selectFilter").property('value');
-  var lowerRange = d3.select("#rangeStart").property('value');
-  var upperRange = d3.select("#rangeEnd").property('value');
-  return preprocess.getFilteredProducts(regionName, succName, filter, lowerRange, upperRange);
-}
-
-function updateOpacity() {
-  d3.selectAll(".productCircle").attr("opacity", function (d) {
-    return d.subTotal > 0 ? 1 : 0.1;
+function addChangeListener(selector, func, sankeyParameters, color) {
+  d3.select(selector).on('change', function () {
+    var succRegionName = d3.select(this).property('value');
+    func(sankeyParameters, succRegionName, color);
   });
 }
+/**
+* Generates the SVG element g which will contain the sanky base.
+*
+* @param {number} width The width of the graph
+* @param {number} height The height of the graph
+* @returns {*} The d3 Selection for the created g element
+*/
 
-function updateChart() {
-  var newData = getBubbleChartContent();
-  var dictionary = Object.assign.apply(Object, [{}].concat(_toConsumableArray(newData.map(function (x) {
-    return _defineProperty({}, x.id, x);
-  }))));
-  d3.select("#bubbleChart").selectAll(".productCircle").each(function (d) {
-    d.subTotal = dictionary[d.id].subTotal;
-    d.SuccDispoCount = dictionary[d.id].SuccDispoCount;
-  });
-  updateOpacity();
+
+function generateMapG(vizNumber) {
+  d3.select('#svg-sanky' + vizNumber).append("rect").attr("width", "100%").attr("height", "100%").attr("fill", "#f9f9f9");
+  return d3.select('#svg-sanky' + vizNumber).append('g').attr('id', 'g-sanky' + vizNumber);
 }
-},{"./productTooltip.js":"scripts/bubblechart/productTooltip.js","./legend.js":"scripts/bubblechart/legend.js","./helper.js":"scripts/bubblechart/helper.js","./preprocess.js":"scripts/bubblechart/preprocess.js","./viz.js":"scripts/bubblechart/viz.js","d3-tip":"../node_modules/d3-tip/index.js","d3-array":"../node_modules/d3-array/src/index.js","../sankey/helper.js":"scripts/sankey/helper.js","../sankey/preprocess.js":"scripts/sankey/preprocess.js"}],"scripts/sankey/viz.js":[function(require,module,exports) {
+/**
+* Generates the SVG element g which will contain the sanky base.
+*
+* @param {number} width The width of the graph
+* @param {number} height The height of the graph
+* @returns {*} The d3 Selection for the created g element
+*/
+
+
+function generateLegendG() {
+  return d3.select('#svg-legend-sanky').append('g').attr('id', 'legend-sanky');
+}
+},{}],"scripts/sankey/viz.js":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -14266,7 +14356,7 @@ function drawSankeyNodes(g) {
 */
 
 
-function drawSankeyNodesRects(node, color, func) {
+function drawSankeyNodesRects(node, secondCategoryWithChild, func) {
   node.append("rect").attr("x", function (d) {
     return d.x0;
   }).attr("y", function (d) {
@@ -14276,31 +14366,153 @@ function drawSankeyNodesRects(node, color, func) {
   }).attr("width", function (d) {
     return d.x1 - d.x0;
   }).attr("fill", function (d) {
-    return color(d.name.replace(/ .*/, ""));
+    return secondCategoryWithChild.has(d.name) ? "#7F006E" : "#E7D1D4";
   }).attr("stroke", "#000").on('click', function (d) {
-    func(d.name, color);
+    func(d.name);
   });
 }
 /**
-* Add a label if the node is big enough
+* Add a label for the note
 */
 
 
 function addSankeyNodeLabels(node) {
   node.append("rect").attr("x", function (d) {
-    return d.x0 - 6;
+    return d.x1 + 3;
   }).attr("y", function (d) {
-    return (d.y1 + d.y0) / 2;
-  }).style("fill", d3.color("steelblue")).attr("dy", "0.35em").attr("dx", "3px");
+    return (d.y1 + d.y0) / 2 - 8;
+  }).style("fill", d3.color("white")).style("fill-opacity", "6 0%").style("filter", "url(#f1)").attr("width", function (d) {
+    var canvas = document.createElement("canvas");
+    var context = canvas.getContext("2d");
+    context.font = "11px sans-serif";
+    var width = context.measureText(d.name).width;
+    return width + 4;
+  }).attr("height", "13");
   node.append("text").attr("x", function (d) {
     return d.x0 - 6;
   }).attr("y", function (d) {
     return (d.y1 + d.y0) / 2;
-  }).style("fill", d3.color("steelblue")).attr("dy", "0.35em").attr("text-anchor", "end").text(function (d) {
+  }).attr("dy", "0.35em").attr("text-anchor", "end").text(function (d) {
     return d.name;
   }).attr("x", function (d) {
     return d.x1 + 5;
   }).attr("text-anchor", "start");
+}
+},{}],"scripts/sankey/panel.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.display = display;
+
+/**
+ * Displays the information panel when a marker is clicked.
+ *
+ * @param {object} d The data bound to the clicked marker
+ * @param {*} color The color scale used to select the title's color
+ */
+function display(d, sankeyParametersArray, firstCategories) {
+  var panel = d3.select('#sankey-panel').style('visibility', 'visible');
+  panel.selectAll('*').remove();
+  var title = panel.append('div').style('font-size', '24px').style('font-weight', 'bold').style('margin-bottom', '10px');
+  setTitle(title, d);
+  var distinctProduct = panel.append('div').style('font-size', '16px').text("Nombre de produits différents: ");
+  var succ1Name;
+  var succ1Quantity;
+
+  if (sankeyParametersArray[0].regionFilter == "all" && sankeyParametersArray[0].branchFilter == "all") {
+    succ1Name = "Toutes les régions";
+
+    if (firstCategories.has(d.name)) {
+      succ1Quantity = sankeyParametersArray[0].data.find(function (e) {
+        return e.region == "all" && e.succ_name == "all" && e.source == d.name;
+      }).value;
+    } else {
+      succ1Quantity = sankeyParametersArray[0].data.find(function (e) {
+        return e.region == "all" && e.succ_name == "all" && e.target == d.name;
+      }).value;
+    }
+  } else {
+    succ1Name = sankeyParametersArray[0].branchFilter == "all" ? sankeyParametersArray[0].regionFilter : sankeyParametersArray[0].branchFilter;
+
+    if (firstCategories.has(d.name)) {
+      succ1Quantity = sankeyParametersArray[0].data.find(function (e) {
+        return (e.region == succ1Name || e.succ_name == succ1Name) && e.source == d.name;
+      }).value;
+    } else {
+      succ1Quantity = sankeyParametersArray[0].data.find(function (e) {
+        return (e.region == succ1Name || e.succ_name == succ1Name) && e.target == d.name;
+      }).value;
+    }
+  }
+
+  var succ2Name;
+  var succ2Quantity;
+
+  if (sankeyParametersArray[1].regionFilter == "all" && sankeyParametersArray[1].branchFilter == "all") {
+    succ2Name = "Toutes les régions";
+
+    if (firstCategories.has(d.name)) {
+      succ2Quantity = sankeyParametersArray[1].data.find(function (e) {
+        return e.region == "all" && e.succ_name == "all" && e.source == d.name;
+      }).value;
+    } else {
+      succ2Quantity = sankeyParametersArray[1].data.find(function (e) {
+        return e.region == "all" && e.succ_name == "all" && e.target == d.name;
+      }).value;
+    }
+  } else {
+    succ2Name = sankeyParametersArray[1].branchFilter == "all" ? sankeyParametersArray[1].regionFilter : sankeyParametersArray[1].branchFilter;
+
+    if (firstCategories.has(d.name)) {
+      succ2Quantity = sankeyParametersArray[1].data.find(function (e) {
+        return (e.region == succ2Name || e.succ_name == succ2Name) && e.source == d.name;
+      }).value;
+    } else {
+      succ2Quantity = sankeyParametersArray[1].data.find(function (e) {
+        return (e.region == succ2Name || e.succ_name == succ2Name) && e.target == d.name;
+      }).value;
+    }
+  }
+
+  var succ1 = panel.append('div').style('font-size', '16px').text(succ1Name + ": " + succ1Quantity);
+  var succ2 = panel.append('div').style('font-size', '16px').text(succ2Name + ": " + succ2Quantity);
+}
+/**
+ * Displays the title of the information panel. Its color matches the color of the
+ * corresponding marker on the map.
+ *
+ * @param {*} g The d3 selection of the SVG g element containing the title
+ * @param {object} d The data to display
+ * @param {*} color The color scale to select the title's color
+ */
+
+
+function setTitle(g, d) {
+  g.text(d.name);
+}
+/**
+ * Displays the mode in the information panel.
+ *
+ * @param {*} g The d3 selection of the SVG g element containing the mode
+ * @param {object} d The data to display
+ */
+
+
+function setDistinctProduct(g, d) {
+  g.text("Nombre de produits différents de cette catégorie: ");
+}
+/**
+ * Displays the themes in the information panel. Each theme is appended
+ * as an HTML list item element.
+ *
+ * @param {*} g The d3 selection of the SVG g element containing the themes
+ * @param {object} d The data to display
+ */
+
+
+function setTheme(g, d) {// TODO : Append a list element representing the given theme
 }
 },{}],"scripts/sankey/sankey-diagram.js":[function(require,module,exports) {
 "use strict";
@@ -14315,6 +14527,8 @@ var preprocess = _interopRequireWildcard(require("./preprocess.js"));
 var helper = _interopRequireWildcard(require("./helper.js"));
 
 var viz = _interopRequireWildcard(require("./viz.js"));
+
+var panel = _interopRequireWildcard(require("./panel.js"));
 
 function _getRequireWildcardCache() { if (typeof WeakMap !== "function") return null; var cache = new WeakMap(); _getRequireWildcardCache = function () { return cache; }; return cache; }
 
@@ -14332,22 +14546,20 @@ var sankey;
 var secondCategoryWithChild = new Set();
 
 function addSankeyDiagrams(data) {
-  var color = d3.scaleOrdinal(d3.schemePuRd[9]);
   firstCategories = preprocess.getFirstCategories(data);
   secondCategoryWithChild = preprocess.getSecondCategoryWithChild(data, firstCategories);
   firstCategories.forEach(function (d) {
     secondCategoryWithChild.add(d);
   });
-  color.domain(Array.from(firstCategories));
-  generateSankey(1, data, color);
-  generateSankey(2, data, color);
+  generateSankey(1, data);
+  generateSankey(2, data);
 }
 /**
  * This function generate a sankey diagram
  */
 
 
-function generateSankey(vizNumber, data, color) {
+function generateSankey(vizNumber, data) {
   var g = helper.generateMapG(vizNumber);
   var sankeyParameters = {
     "data": data,
@@ -14360,29 +14572,29 @@ function generateSankey(vizNumber, data, color) {
   sankeyParametersArray.push(sankeyParameters);
   var regionNames = preprocess.getRegionNames(data);
   helper.addSelectionOption('#region' + vizNumber, regionNames);
-  helper.addChangeListener('#region' + vizNumber, setFilterRegion, sankeyParameters, color);
+  helper.addChangeListener('#region' + vizNumber, setFilterRegion, sankeyParameters);
   var branchesNames = preprocess.getBranchesNames(data);
   helper.addSelectionOption('#branch' + vizNumber, branchesNames);
-  helper.addChangeListener('#branch' + vizNumber, setFilterBranch, sankeyParameters, color);
-  var sankeyData = filterRegion(sankeyParameters, "all", color);
-  createGraph(sankeyData, sankeyParameters.g, color);
+  helper.addChangeListener('#branch' + vizNumber, setFilterBranch, sankeyParameters);
+  var sankeyData = filterRegion(sankeyParameters, "all");
+  createGraph(sankeyData, sankeyParameters.g);
 }
 
-function setFilterRegion(sankeyParameters, regionName, color) {
+function setFilterRegion(sankeyParameters, regionName) {
   sankeyParameters.regionFilter = regionName;
   sankeyParameters.branchFilter = "all";
-  updateGraph(sankeyParameters, color);
+  updateGraph(sankeyParameters);
 }
 
-function setFilterBranch(sankeyParameters, branchName, color) {
+function setFilterBranch(sankeyParameters, branchName) {
   sankeyParameters.branchFilter = branchName;
-  updateGraph(sankeyParameters, color);
+  updateGraph(sankeyParameters);
 }
 
-function setSecondCategory(category, color) {
+function setSecondCategory(category) {
   secondCategory = category;
   sankeyParametersArray.forEach(function (d) {
-    updateGraph(d, color);
+    updateGraph(d);
   });
 }
 /**
@@ -14394,6 +14606,7 @@ function filterRegion(sankeyParameters, regionName) {
   sankeyParameters.regionFilter = regionName;
   var branchesNames = preprocess.getBranchesByRegion(sankeyParameters.data, regionName);
   helper.addSelectionOption('#branch' + sankeyParameters.vizNumber, branchesNames);
+  d3.select('#branch' + sankeyParameters.vizNumber + "-button").select("span").text("Toutes les succursales");
   var filteredData = preprocess.filterRegion(sankeyParameters.data, regionName);
   filteredData = preprocess.filterFirstCategories(filteredData, firstCategories, secondCategory);
   return preprocess.prepareDataForGraph(filteredData);
@@ -14414,24 +14627,34 @@ function filterBranch(sankeyParameters, branchName) {
  */
 
 
-function updateGraph(sankeyParameters, color) {
-  console.log(sankeyParameters);
+function updateGraph(sankeyParameters) {
   var sankeyData = sankeyParameters.branchFilter == "all" ? filterRegion(sankeyParameters, sankeyParameters.regionFilter) : filterBranch(sankeyParameters, sankeyParameters.branchFilter);
-  console.log(sankeyData);
   sankey(sankeyData);
   var t = d3.transition().duration(750).ease(d3.easeLinear);
   var link = sankeyParameters.g.selectAll("path").data(sankeyData.links, function (d) {
     return d;
   });
-  link.enter().append("path").attr("d", d3.sankeyLinkHorizontal()).attr("class", "link").attr("stroke-width", function (d) {
+  link.enter().append("path").attr("d", d3.sankeyLinkHorizontal()).attr("stroke-width", function (d) {
     return Math.max(1, d.width);
+  }).attr("class", function (d, i) {
+    var id = d.source.name + d.target.name;
+
+    while (id.includes(" ")) {
+      id = id.replace(" ", "");
+    }
+
+    d.id = id;
+    return "link-" + d.id + " link";
   });
   link.transition(t).attr("d", d3.sankeyLinkHorizontal()).attr("stroke-width", function (d) {
     return Math.max(1, d.width);
   });
   link.exit().remove();
   var node = sankeyParameters.g.select(".nodes").selectAll("g").data(sankeyData.nodes);
-  var nodeEnter = node.enter().append("g");
+  var nodeEnter = node.enter().append("g").on("mouseover", function (d, i) {
+    highlight(d, i);
+    panel.display(d, sankeyParametersArray, firstCategories);
+  }).on("mouseout", removeHighlight);
   nodeEnter.append("rect").attr("x", function (d) {
     return d.x0;
   }).attr("y", function (d) {
@@ -14441,7 +14664,7 @@ function updateGraph(sankeyParameters, color) {
   }).attr("width", function (d) {
     return d.x1 - d.x0;
   }).attr("fill", function (d) {
-    return color(d.name.replace(/ .*/, ""));
+    return secondCategoryWithChild.has(d.name) ? "#7F006E" : "#E7D1D4";
   }).attr("stroke", "#000");
   node.select("rect").transition(t).attr("x", function (d) {
     return d.x0;
@@ -14477,7 +14700,7 @@ function updateGraph(sankeyParameters, color) {
  */
 
 
-function createGraph(data, g, color) {
+function createGraph(data, g) {
   g.selectAll(".links").remove();
   g.selectAll(".nodes").remove();
   var margin = {
@@ -14490,14 +14713,75 @@ function createGraph(data, g, color) {
   var link = viz.drawSankeyLinks(g);
   var node = viz.drawSankeyNodes(g);
   sankey(data);
-  link.data(data.links).enter().append("path").attr("d", d3.sankeyLinkHorizontal()).attr("stroke-width", function (d) {
+  link.data(data.links).enter().append("path").attr("d", d3.sankeyLinkHorizontal()).attr("class", function (d, i) {
+    var id = d.source.name + d.target.name;
+
+    while (id.includes(" ")) {
+      id = id.replace(" ", "");
+    }
+
+    d.id = id;
+    return "link-" + d.id;
+  }).attr("stroke-width", function (d) {
     return Math.max(1, d.width);
   });
-  node = node.data(data.nodes).enter().append("g");
-  viz.drawSankeyNodesRects(node, color, setSecondCategory);
+  node = node.data(data.nodes).enter().append("g").on("mouseover", function (d, i) {
+    highlight(d, i);
+    panel.display(d, sankeyParametersArray, firstCategories);
+  }).on("mouseout", removeHighlight);
+  viz.drawSankeyNodesRects(node, secondCategoryWithChild, setSecondCategory);
   viz.addSankeyNodeLabels(node, sankey);
 }
-},{"./preprocess.js":"scripts/sankey/preprocess.js","./helper.js":"scripts/sankey/helper.js","./viz.js":"scripts/sankey/viz.js"}],"scripts/map/helper.js":[function(require,module,exports) {
+
+function highlight(node, i) {
+  highlight_node_links(node, i, false);
+}
+
+function removeHighlight(node, i) {
+  highlight_node_links(node, i, true);
+}
+
+function highlight_node_links(node, i, removeHighlight) {
+  var remainingNodes = [],
+      nextNodes = [];
+  var stroke_opacity = 0;
+
+  if (removeHighlight) {
+    stroke_opacity = 0.2;
+  } else {
+    stroke_opacity = 0.5;
+  }
+
+  var traverse = [{
+    linkType: "sourceLinks",
+    nodeType: "target"
+  }, {
+    linkType: "targetLinks",
+    nodeType: "source"
+  }];
+  traverse.forEach(function (step) {
+    node[step.linkType].forEach(function (link) {
+      remainingNodes.push(link[step.nodeType]);
+      highlight_link(link.id, stroke_opacity);
+    });
+
+    while (remainingNodes.length) {
+      nextNodes = [];
+      remainingNodes.forEach(function (node) {
+        node[step.linkType].forEach(function (link) {
+          nextNodes.push(link[step.nodeType]);
+          highlight_link(link.id, stroke_opacity);
+        });
+      });
+      remainingNodes = nextNodes;
+    }
+  });
+}
+
+function highlight_link(id, opacity) {
+  d3.selectAll(".link-" + id).style("stroke-opacity", opacity);
+}
+},{"./preprocess.js":"scripts/sankey/preprocess.js","./helper.js":"scripts/sankey/helper.js","./viz.js":"scripts/sankey/viz.js","./panel.js":"scripts/sankey/panel.js"}],"scripts/map/helper.js":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -14583,7 +14867,7 @@ function initReset(svg, zoom) {
 
 function initSwitch(viz, legend, colorScale, graphSize, margin) {
   d3.select('#switch-map').on('click', function (d) {
-    if (d3.select(this).property('value') === 'Switch 1') {
+    if (d3.select(this).html() === '<i class="fa fa-filter" style="font-size:default;"></i>&nbsp;Succursales par habitant') {
       viz.setColorScaleDomain(colorScale, 1);
       legend.initGradient(colorScale);
       legend.initLegendBar();
@@ -14595,7 +14879,8 @@ function initSwitch(viz, legend, colorScale, graphSize, margin) {
           return colorScale(Math.log(d.properties.succ_par_km2));
         }
       });
-      d3.select(this).property('value', 'Switch 2');
+      d3.select('.legend-title-bg').attr('width', 215);
+      d3.select(this).html('<i class="fa fa-filter" style="font-size:default;"></i>&nbsp;Succursales par km2');
     } else {
       viz.setColorScaleDomain(colorScale, 0);
       legend.initGradient(colorScale);
@@ -14608,7 +14893,8 @@ function initSwitch(viz, legend, colorScale, graphSize, margin) {
           return colorScale(d.properties.succ_par_hab);
         }
       });
-      d3.select(this).property('value', 'Switch 1');
+      d3.select('.legend-title-bg').attr('width', 255);
+      d3.select(this).html('<i class="fa fa-filter" style="font-size:default;"></i>&nbsp;Succursales par habitant');
     }
   });
 }
@@ -14664,7 +14950,7 @@ function simulate(simulation) {
 
 
 function getProjection() {
-  return d3.geoMercator().center([-75.904095, 58.677163]).scale(1500);
+  return d3.geoMercator().center([-83.304095, 58.277163]).scale(1500);
 }
 /**
  * Sets up the path to be used.
@@ -14720,6 +15006,7 @@ function showSuccCount(svg) {
 
 
 function unselectSucc(currentZoom) {
+  d3.select('#map-viz .selected').transition().duration('125').attr('r', 7 / currentZoom.val).style('stroke-width', 1 / currentZoom.val);
   d3.select('#map-viz .selected').style('fill', function (d) {
     switch (d.type) {
       case 'SAQ':
@@ -14737,7 +15024,7 @@ function unselectSucc(currentZoom) {
       case 'SAQ Restauration':
         return 'yellow';
     }
-  }).attr('r', 7 / currentZoom.val).classed('selected', false);
+  }).classed('selected', false);
   d3.selectAll('#map-viz .cancel').style('cursor', 'default');
   d3.select('#map-panel').style('visibility', 'hidden');
 }
@@ -14756,9 +15043,35 @@ function drawMap(child, path, data, colorScale, currentZoom) {
       return colorScale(d.properties.succ_par_hab);
     }
   }).style('stroke', 'white').style('stroke-width', 1 / currentZoom.val).attr('class', 'cancel').on('mouseover', function (d) {
-    child.append('g').append('text').attr('class', 'mapLabel').attr('x', path.centroid(d)[0]).attr('y', path.centroid(d)[1]).attr('width', '100').attr('height', '30').style('text-anchor', 'middle').style('font-size', 12 / currentZoom.val).text(d.properties.res_nm_reg);
+    /*
+    child
+      .append('g')
+      .append('text')
+      .attr('class', 'mapLabel')
+      .attr('x', path.centroid(d)[0])
+      .attr('y', path.centroid(d)[1])
+      .attr('width', '100')
+      .attr('height', '30')
+      .style('text-anchor', 'middle')
+      .style('font-size', 12 / currentZoom.val)
+      .text(d.properties.res_nm_reg)
+      */
+    d3.select('#map-viz svg').append('rect').attr('x', 1250).attr('y', 675).attr('rx', 12).attr('ry', 12).attr('width', 300).attr('height', 150).attr('fill', 'rgba(200,200,200,0.75)').attr('class', 'region-info-bg');
+    d3.select('#map-viz svg').append('text').attr('x', 1260).attr('y', 725).attr('class', 'region-info').style('text-anchor', 'left').style('font-size', 20).text(d.properties.res_nm_reg);
+
+    if (d3.select('#switch-map').property('value') === 'Switch 1') {
+      d3.select('#map-viz svg').append('text').attr('x', 1260).attr('y', 785).attr('class', 'region-info').style('text-anchor', 'left').style('font-size', 15).text('- ' + d.properties.succ_par_hab + ' succursales/100 000 hab.');
+    } else {
+      d3.select('#map-viz svg').append('text').attr('x', 1260).attr('y', 785).attr('class', 'region-info').style('text-anchor', 'left').style('font-size', 15).text('- ' + d.properties.succ_par_km2 + ' succursales/10 000 km2');
+    }
+
+    d3.select('#map-viz svg').append('text').attr('x', 1260).attr('y', 755).attr('class', 'region-info').style('text-anchor', 'left').style('font-size', 15).text('- ' + d.properties.nb_succ + ' succursales');
+    d3.select(this).style('stroke-width', 3 / currentZoom.val).classed('hovered', true);
   }).on('mouseout', function (d) {
-    d3.selectAll('#map-viz .mapLabel').remove();
+    d3.selectAll('#map-viz .region-info').remove();
+    d3.select('#map-viz .region-info-bg').remove(); // d3.selectAll('#map-viz .mapLabel').remove()
+
+    d3.select(this).classed('hovered', false).style('stroke-width', 1 / currentZoom.val);
   }).on('click', function (d) {
     unselectSucc(currentZoom);
   });
@@ -14777,14 +15090,25 @@ function filtering(currentZoom) {
 
     if (label.classed('ui-checkbox-on') === true) {
       if (checkbox.property('value') === 'tout') {
-        console.log('hey');
-        d3.selectAll('#map-viz .marker').style('visibility', 'hidden');
-        unselectSucc(currentZoom);
-        d3.selectAll('#map-viz .ui-checkbox label').classed('ui-checkbox-off', true);
-        d3.selectAll('#map-viz .ui-checkbox label').classed('ui-checkbox-on', false); // d3.selectAll('#map-viz .ui-checkbox input').property('data-cacheval', false)
+        d3.selectAll('#map-viz .marker').style('visibility', 'hidden'); // $('#map-viz .marker').css('visibility', 'hidden')
 
+        unselectSucc(currentZoom); // console.log($('#map-viz input[type=checkbox]')[0].prop('checked'))
+
+        /*
+        $('#map-viz input[type=checkbox]').attr('checked', function (i) {
+          if (i !== 0) {
+            return false
+          }
+        })
+        */
+
+        d3.selectAll('#map-viz .ui-checkbox label').classed('ui-checkbox-off', true);
+        d3.selectAll('#map-viz .ui-checkbox label').classed('ui-checkbox-on', false);
+        d3.selectAll('#map-viz .ui-checkbox input').attr('data-cacheval', function (d, i) {
+          if (i !== 0) return true;
+        });
         label.classed('ui-checkbox-off', false);
-        label.classed('ui-checkbox-on', true); // checkbox.property('data-cacheval', true)
+        label.classed('ui-checkbox-on', true);
       } else {
         d3.selectAll('#map-viz .marker').style('visibility', function (d) {
           if (d.type === type) {
@@ -14804,10 +15128,12 @@ function filtering(currentZoom) {
       if (checkbox.property('value') === 'tout') {
         d3.selectAll('#map-viz .marker').style('visibility', 'visible');
         d3.selectAll('#map-viz .ui-checkbox label').classed('ui-checkbox-off', false);
-        d3.selectAll('#map-viz .ui-checkbox label').classed('ui-checkbox-on', true); // d3.selectAll('#map-viz .ui-checkbox input').property('data-cacheval', true)
-
+        d3.selectAll('#map-viz .ui-checkbox label').classed('ui-checkbox-on', true);
+        d3.selectAll('#map-viz .ui-checkbox input').attr('data-cacheval', function (d, i) {
+          if (i !== 0) return false;
+        });
         label.classed('ui-checkbox-off', true);
-        label.classed('ui-checkbox-on', false); // checkbox.property('data-cacheval', false)
+        label.classed('ui-checkbox-on', false);
       } else {
         d3.selectAll('#map-viz .marker').style('visibility', function (d) {
           if (d.type === type) {
@@ -14855,8 +15181,20 @@ function addMapMarkers(child, data, panel, currentZoom) {
   }).style('visibility', 'visible').style('stroke', 'white').style('stroke-width', 1).on('click', function (d) {
     unselectSucc(currentZoom);
     panel.display(d);
-    d3.select(this).style('fill', 'green').attr('r', 10 / currentZoom.val).classed('selected', true);
+    d3.select(this).transition().duration(200).attr('r', 15 / currentZoom.val).style('stroke-width', 3 / currentZoom.val);
+    d3.select(this).classed('selected', true);
     d3.selectAll('#map-viz .cancel').style('cursor', 'not-allowed');
+  }).on('mouseover', function (d) {
+    if (d3.select(this).classed('selected') === false) {
+      d3.select(this).classed('hovered', true);
+      d3.select(this).transition().duration(200).style('stroke-width', 2 / currentZoom.val).attr('r', 10 / currentZoom.val);
+    }
+  }).on('mouseout', function (d) {
+    if (d3.select(this).classed('selected') !== true) {
+      d3.select(this).transition().duration(125).style('stroke-width', 1 / currentZoom.val).attr('r', 7 / currentZoom.val);
+    }
+
+    d3.select(this).classed('hovered', false);
   });
 }
 },{}],"../node_modules/d3-fetch/src/blob.js":[function(require,module,exports) {
@@ -15547,7 +15885,9 @@ function draw(x, y, height, width, fill, colorScale, mode) {
 
 function setAxisTitle(text) {
   d3.select('#map-viz .legend-title').remove();
-  d3.select('#map-viz svg').append('text').attr('x', 50).attr('y', 788).attr('class', 'legend-title').style('text-anchor', 'left').text(text);
+  d3.select('#map-viz .legend-title-bg').remove();
+  d3.select('#map-viz svg').append('rect').attr('x', 45).attr('y', 765).attr('rx', 12).attr('ry', 12).attr('width', 255).attr('height', 45).attr('fill', 'rgba(200,200,200,0.75)').attr('class', 'legend-title-bg');
+  d3.select('#map-viz svg').append('text').attr('x', 50).attr('y', 793).attr('class', 'legend-title').style('text-anchor', 'left').text(text);
 }
 },{"d3-fetch":"../node_modules/d3-fetch/src/index.js"}],"scripts/map/panel.js":[function(require,module,exports) {
 "use strict";
@@ -15566,9 +15906,9 @@ exports.display = display;
 function display(d) {
   var panel = d3.select('#map-panel').style('visibility', 'visible');
   panel.selectAll('*').remove();
-  var title = panel.append('div').style('font-family', 'Oswald').style('font-size', '24px');
+  var title = panel.append('div').style('font-size', '24px').style('font-weight', 'bold').style('margin-bottom', '10px');
   setTitle(title, d);
-  var mode = panel.append('div').style('font-family', 'Oswald').style('font-size', '16px');
+  var mode = panel.append('div').style('font-size', '16px');
   setMode(mode, d);
 }
 /**
@@ -15593,8 +15933,15 @@ function setTitle(g, d) {
 
 
 function setMode(g, d) {
-  g.text(d.region);
-  g.append('div').style('font-family', 'Oswald').style('font-size', '16px').text(d.type);
+  var addressLink = 'https://www.google.com/maps/search/?api=1&query=SAQ+' + d.ville + '+' + d.adresse;
+  var phoneLink = 'tel:' + d.tel;
+  g.append('div').text(d.type).style('margin-bottom', '20px').style('font-size', '16px').style('font-weight', 'bold');
+  g.append('div').text('🌐 ' + d.region).style('margin-bottom', '20px');
+  g.append('text').text('📍 ');
+  g.append('a').attr('href', addressLink).attr('target', '_blank').attr('rel', 'noopener noreferrer').html(d.adresse + ', ' + d.ville).style('margin-bottom', '20px');
+  g.append('div').style('margin-top', '20px');
+  g.append('text').text('☎️ ');
+  g.append('a').attr('href', phoneLink).html(d.tel).style('margin-bottom', '20px');
 }
 /**
  * Displays the themes in the information panel. Each theme is appended
@@ -17044,8 +17391,10 @@ function addMap() {
     currentZoom.val = d3.event.transform.k;
     child.attr('transform', d3.event.transform);
     d3.selectAll('#map-viz circle').attr('r', 7 / d3.event.transform.k).style('stroke-width', 1 / d3.event.transform.k);
-    d3.selectAll('#map-viz circle.selected').attr('r', 10 / d3.event.transform.k).style('stroke-width', 1 / d3.event.transform.k);
+    d3.selectAll('#map-viz circle.selected').attr('r', 15 / d3.event.transform.k).style('stroke-width', 3 / d3.event.transform.k);
+    d3.selectAll('#map-viz circle.hovered').attr('r', 10 / d3.event.transform.k).style('stroke-width', 2 / d3.event.transform.k);
     d3.selectAll('#map-viz path').style('stroke-width', 1 / d3.event.transform.k);
+    d3.selectAll('#map-viz path.hovered').style('stroke-width', 3 / d3.event.transform.k);
     d3.selectAll('#map-viz .mapLabel').style('font-size', 12 / d3.event.transform.k);
   });
   var svg = d3.select('#map-viz').select('svg').attr('width', svgSize.width).attr('height', svgSize.height).append('g').call(zoom);
@@ -17053,7 +17402,6 @@ function addMap() {
   child = child1.append('g');
   helper.generateMapG(svgSize.width, svgSize.height);
   helper.generateMarkerG(svgSize.width, svgSize.height);
-  helper.initPanelDiv();
   helper.initReset(svg, zoom);
   viz.filtering(currentZoom);
   viz.setColorScaleDomain(colorScale, 0);
@@ -17062,8 +17410,7 @@ function addMap() {
   legend.initLegendAxis();
   setSizing(); // eslint-disable-next-line func-call-spacing
 
-  build();
-  viz.showSuccCount(svg);
+  build(svg);
   helper.initSwitch(viz, legend, colorScale, graphSize, margin);
 }
 /**
@@ -17084,19 +17431,24 @@ function setSizing() {
  */
 
 
-function build() {
+function build(svg) {
   var projection = helper.getProjection();
   var path = helper.getPath(projection);
-  d3.json('./succursales.geojson').then(function (data) {
-    viz.drawMap(child, path, data, colorScale, currentZoom);
-  });
-  d3.csv('./succ_list.csv').then(function (data) {
-    data.forEach(function (succ) {
+  var DATA = {};
+  var promises = [d3.json('./succursales.geojson').then(function (data) {
+    DATA.geojson = data;
+  }), d3.csv('./succ_list.csv').then(function (data) {
+    DATA.csv = data;
+  })];
+  Promise.all(promises).then(function () {
+    viz.drawMap(child, path, DATA.geojson, colorScale, currentZoom);
+    DATA.csv.forEach(function (succ) {
       var cartesianCoord = projection([succ.lon, succ.lat]);
       succ.x = cartesianCoord[0];
       succ.y = cartesianCoord[1];
     });
-    viz.addMapMarkers(child, data, panel, currentZoom);
+    viz.addMapMarkers(child, DATA.csv, panel, currentZoom);
+    viz.showSuccCount(svg);
   });
   legend.draw(50, margin.top + 5, graphSize.height - 10, 15, 'url(#gradient)', colorScale, 0);
   legend.setAxisTitle('Succursales par 100 000 habitants');
@@ -17132,7 +17484,6 @@ function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj;
     all.push(p);
   });
   Promise.all(all).then(function () {
-    console.log(DATA);
     pre.preprocess(DATA);
     menu.init();
     BubbleChart.addChart();
@@ -17168,7 +17519,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "53165" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "59685" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
